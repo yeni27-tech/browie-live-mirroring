@@ -1,0 +1,6 @@
+{
+  "name": "browie-live-mirroring-web",
+  "private": true,
+  "type": "module",
+  "description": "Dashboard online (baca-saja) browie Live Mirroring + link penghitung IG → Shopee. Data dari ekstensi manager host, disimpan di Upstash Redis."
+}

@@ -1,0 +1,30 @@
+PESAN UNTUK MANAGER HOST — salin ke chat PRIBADI (bukan grup), lampirkan 2 file:
+  1) browie-live-mirroring-ekstensi-v0.8.0.zip
+  2) PANDUAN-HOST.md
+Ganti bagian [ … ] dengan isi dari file ~/browie-live-rahasia.txt.
+==========================================================================
+
+Hai kak! Ini untuk laporan live mirroring browie (live yang tayang di Instagram + Shopee sekaligus). 🙌
+
+Dua file terlampir:
+• browie-live-mirroring-ekstensi-v0.8.0.zip → ekstensi Chrome, dipasang di laptop yang login Seller Centre Shopee browie
+• PANDUAN-HOST.md → langkah demi langkah (±15 menit, sekali saja)
+
+Yang dibutuhkan:
+• Alamat dashboard : https://browie-live.vercel.app
+• Password admin   : [ADMIN_PASSWORD]
+• Kode kirim       : [KODE_KIRIM_EKSTENSI]
+
+Urutan singkat:
+1) Ekstrak zip → pindahkan foldernya ke Dokumen (jangan dihapus / dipindah lagi)
+2) Chrome → ketik chrome://extensions → nyalakan Developer mode → Load unpacked → pilih foldernya
+3) Buka ekstensi → ⚙️ Pengaturan → isi alamat dashboard + kode kirim → Simpan & cek (harus muncul "Tersambung")
+4) Tab 🔎 Mode intip → ikuti 6 langkahnya → Unduh hasil intip → kirim file .json-nya ke aku
+5) Buka alamat dashboard → Masuk admin (pakai password di atas) → coba 📸 Impor screenshot
+
+Catatan penting:
+• Password admin & kode kirim cukup untuk kita berdua, jangan dibagikan ke grup ya
+• Ekstensi hanya MEMBACA, tidak mengubah apa pun di Shopee
+• Kalau ada yang bingung / muncul tulisan merah, screenshot dan kirim ke aku
+
+Terima kasih kak! 🙏

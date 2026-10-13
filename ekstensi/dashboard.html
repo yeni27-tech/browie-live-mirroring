@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>browie Live Mirroring</title>
+<script src="theme.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>browie <b>Live Mirroring</b></h1>
+    <span class="sub" id="versi"></span>
+    <span class="spacer"></span>
+    <label class="theme" for="theme-sel">Tampilan
+      <select id="theme-sel"><option value="auto">Ikut sistem</option><option value="light">Terang</option><option value="dark">Gelap</option></select>
+    </label>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab-btn is-active" data-tab="petunjuk">📖 Petunjuk</button>
+    <button class="tab-btn" data-tab="ringkasan">📊 Ringkasan</button>
+    <button class="tab-btn" data-tab="intip">🔎 Mode intip</button>
+    <button class="tab-btn" data-tab="pengaturan">⚙️ Pengaturan</button>
+  </nav>
+
+  <!-- ===== PETUNJUK (untuk manager host, bahasa awam) ===== -->
+  <section class="pane" id="pane-petunjuk">
+    <div class="panel panel-petunjuk">
+      <h2>📖 Selamat datang — ekstensi ini untuk apa?</h2>
+      <p class="msg" style="font-size:14px;max-width:75ch">Ekstensi ini membantu membuat <b>laporan live mirroring</b> browie: live yang tayang di Instagram dan Shopee sekaligus. Ekstensi bertugas <b>mengambil data dari Seller Centre Shopee</b> di Chrome ini. Laporannya bisa dilihat siapa saja lewat <b>link dashboard online</b>.</p>
+      <h3>Langkah 1 — Sambungkan ke dashboard (sekali saja)</h3>
+      <ol>
+        <li>Buka tab <b>⚙️ Pengaturan</b> di atas.</li>
+        <li>Isi <b>Alamat dashboard</b> dan <b>Kode kirim</b> yang diberikan Yeni.</li>
+        <li>Tekan <b>Simpan &amp; cek</b>. Kalau muncul tulisan <b>"Tersambung"</b>, berarti sudah benar.</li>
+      </ol>
+      <h3>Langkah 2 — Mode intip (sekali saja, ±5 menit)</h3>
+      <ol>
+        <li>Buka tab <b>🔎 Mode intip</b>, ikuti 6 langkah di sana (membuka beberapa halaman Live Streaming di Seller Centre).</li>
+        <li>Tekan <b>⬇︎ Unduh hasil intip</b>, kirim file-nya ke Yeni.</li>
+        <li>Ini supaya ekstensi bisa belajar <b>di mana Shopee menyimpan angka live</b>. Yang dicatat hanya nama kolom, <b>bukan</b> angka penjualan atau data pembeli.</li>
+      </ol>
+      <h3>Langkah 3 — Setiap selesai live (±3 menit)</h3>
+      <ol>
+        <li>Screenshot <b>Tinjauan Data</b> sesi itu di Seller Centre (Live Streaming → klik sesi → Tinjauan Data).</li>
+        <li>Screenshot <b>Insights</b> live di Instagram (profil → live yang selesai → Insights).</li>
+        <li>Buka <b>dashboard online</b> (tombol di tab 📊 Ringkasan) → <b>Masuk admin</b> → <b>📸 Impor screenshot</b> → pilih kedua screenshot.</li>
+        <li>Cek angkanya. Kolom <span class="pill w">kuning</span> = isi atau betulkan sendiri. Tekan <b>Simpan</b>. Selesai.</li>
+      </ol>
+      <h3>Pertanyaan yang sering muncul</h3>
+      <ol>
+        <li><b>Apakah ekstensi ini mengubah sesuatu di Shopee?</b> Tidak. Ekstensi hanya membaca, tidak menekan tombol, tidak mengubah toko.</li>
+        <li><b>Laptop harus menyala terus?</b> Tidak. Data hanya diambil saat Chrome ini terbuka dan Seller Centre masih login. Kalau mati, laporan tetap bisa dibuka dengan data terakhir.</li>
+        <li><b>Muncul "Kode kirim salah"?</b> Minta kode kirim terbaru ke Yeni, isi ulang di Pengaturan.</li>
+        <li><b>Angka di dashboard salah?</b> Buka dashboard online → Masuk admin → buka sesinya → ✏️ Ubah. Koreksi admin selalu dipakai.</li>
+        <li><b>Mode / tampilan gelap?</b> Pilih di pojok kanan atas: Ikut sistem, Terang, atau Gelap.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== RINGKASAN: dibaca dari dashboard online (sama persis dengan yang dilihat tim) ===== -->
+  <section class="pane" id="pane-ringkasan" hidden>
+    <div class="actions"><a class="btn primary" id="buka-admin" target="_blank" rel="noopener" hidden>Buka dashboard online untuk mengisi / mengoreksi data ↗</a><button id="muat-ulang">Muat ulang</button><span class="msg" id="rk-msg"></span></div>
+    <div id="lm"></div>
+  </section>
+
+  <!-- ===== MODE INTIP ===== -->
+  <section class="pane" id="pane-intip" hidden>
+    <div class="panel">
+      <h2>Langkah untuk manager host (sekali saja)</h2>
+      <ol class="steps">
+        <li>Buka <b>Seller Centre Shopee</b> di Chrome ini dan pastikan sudah login akun toko browie.</li>
+        <li>Buka menu <b>Live Streaming</b> sampai terlihat <b>daftar sesi live</b>. Ganti tanggal atau halaman sekali.</li>
+        <li>Klik satu sesi yang sudah selesai, buka <b>Tinjauan Data</b>. Ganti filter <b>Status Pesanan</b> sekali.</li>
+        <li>Buka juga <b>dashboard live</b> (kotak oranye) untuk sesi itu, gulir sampai <b>Sumber Menonton Livestream</b> dan <b>Profil Penonton</b>.</li>
+        <li>Kalau ada, buka halaman <b>komentar</b> atau <b>rekaman</b> sesi live.</li>
+        <li>Kembali ke tab ini, tekan <b>Unduh hasil intip</b>, lalu kirim file-nya ke Yeni.</li>
+      </ol>
+      <p class="note"><b>🧴 Si Henna (pet pemantau):</b> di halaman Seller Centre, pojok kanan bawah ada tube henna alis kecil. Klik untuk melihat jumlah endpoint yang terekam, halaman yang dibuka, dan aktivitas terbaru; seret untuk memindahkan. Klik ikon ekstensi di toolbar saat berada di Seller Centre untuk menampilkan atau menyembunyikannya. Penarikan otomatis Shopee belum aktif, jadi sekarang pet hanya memantau mode intip.</p>
+      <p class="note">Yang dicatat hanya alamat halaman, nama kolom, dan tipe datanya (angka/teks). Tidak ada angka penjualan, nama penonton, ID, atau password yang tersimpan. Mode intip tidak menekan tombol apa pun dan tidak mengirim apa pun; hasilnya hanya keluar saat tombol Unduh ditekan. Mati sendiri 8 November 2026.</p>
+    </div>
+    <div class="bar" id="intip-stats"></div>
+    <div class="actions">
+      <button class="primary" id="intip-dl">⬇︎ Unduh hasil intip</button>
+      <button id="intip-copy">Salin hasil</button>
+      <span id="intip-del-wrap"></span>
+      <span class="msg" id="intip-msg"></span>
+    </div>
+    <div class="tablebox"><table id="intip-tbl"></table></div>
+    <div class="pager" id="intip-pager"></div>
+  </section>
+
+  <!-- ===== PENGATURAN ===== -->
+  <section class="pane" id="pane-pengaturan" hidden>
+    <div class="panel">
+      <h2>Dashboard online tim</h2>
+      <p class="msg">Isi alamat dashboard online dan kode kirim dari Yeni. Ekstensi memakai kode ini untuk menampilkan Ringkasan dan, nanti, mengirim data Shopee yang ditarik dari Seller Centre.</p>
+      <div class="fgrid-set">
+        <label>Alamat dashboard<input type="text" id="set-url" placeholder="https://browie-live.vercel.app"></label>
+        <label>Kode kirim (PUSH_TOKEN)<input type="password" id="set-token" placeholder="dari Yeni" autocomplete="off"></label>
+      </div>
+      <div class="actions" style="margin-top:12px;margin-bottom:0"><button class="primary" id="set-save">Simpan &amp; cek</button><span class="msg" id="set-msg"></span></div>
+    </div>
+    <div class="panel">
+      <h2>Cara mengisi data</h2>
+      <ol class="steps">
+        <li><b>Instagram:</b> buka dashboard online → Masuk admin → tab <b>🛠 Admin</b> → <b>📸 Impor screenshot</b>.</li>
+        <li><b>Shopee:</b> sementara diisi di dashboard online (<b>+ Sesi Shopee</b>). Setelah hasil mode intip diproses, ekstensi ini menariknya sendiri dari Seller Centre.</li>
+      </ol>
+    </div>
+  </section>
+</div>
+<script src="session-core.js"></script>
+<script src="session-render.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

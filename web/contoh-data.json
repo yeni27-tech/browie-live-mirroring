@@ -1,0 +1,105 @@
+{
+  "_catatan": "PRATINJAU LOKAL SAJA (tidak ikut deploy). Angka asli dari screenshot 6–7 Okt 2026; sesi Shopee 6 Okt dari data OS (hanya penonton & penjualan, tanpa durasi). Bentuk sama dengan jawaban /api/data (peran admin) supaya panel admin bisa diuji.",
+  "peran": "admin",
+  "sh": [
+    {
+      "id": "s-2026-10-07-1023",
+      "date": "2026-10-07",
+      "start": "10:23",
+      "title": "Ngalis 10 Menit, Tahan Sampai 3 Hari",
+      "dur": 5801,
+      "penonton": 87,
+      "aktif": 16,
+      "ditonton": 124,
+      "puncak": 4,
+      "avg": 188,
+      "klik": 25,
+      "ctr": 20.2,
+      "atc": 5,
+      "pesanan": 1,
+      "pembeli": 1,
+      "produk": 1,
+      "jual": 84000,
+      "follow": 1,
+      "suka": 331,
+      "bagi": 2,
+      "komen": 4,
+      "by": "manual"
+    },
+    {
+      "id": "s-2026-10-07-1601",
+      "date": "2026-10-07",
+      "start": "16:01",
+      "title": "Ngalis 10 Menit, Tahan Sampai 3 Hari",
+      "dur": 7213,
+      "penonton": 1192,
+      "aktif": 36,
+      "ditonton": 1321,
+      "puncak": 15,
+      "avg": 14,
+      "ctr": 2.0,
+      "atc": 7,
+      "pesanan": 1,
+      "pembeli": 1,
+      "produk": 1,
+      "jual": 134000,
+      "suka": 1116,
+      "bagi": 2,
+      "komen": 9,
+      "sumber": {
+        "Beranda": 62.2,
+        "Rekomendasi": 12.1,
+        "Video": 2.6,
+        "Riwayat pesanan": 2.6,
+        "Tab Live & Video": 2.2,
+        "Lainnya": 18.3
+      },
+      "by": "manual"
+    },
+    {
+      "id": "s-2026-10-06-a",
+      "date": "2026-10-06",
+      "start": "",
+      "title": "Ngalis 10 Menit, Tahan Sampai 3 Hari",
+      "penonton": 80,
+      "jual": 85000,
+      "by": "os-contoh"
+    },
+    {
+      "id": "s-2026-10-06-b",
+      "date": "2026-10-06",
+      "start": "",
+      "title": "Ngalis 10 Menit, Tahan Sampai 3 Hari",
+      "penonton": 67,
+      "jual": 0,
+      "by": "os-contoh"
+    }
+  ],
+  "ig": [
+    {
+      "id": "ig-7okt",
+      "date": "2026-10-07",
+      "title": "NGALIS 10 MENIT TAHAN 3 HARI!",
+      "dur": 5475,
+      "viewers": 40,
+      "puncak": 4,
+      "komen": 1,
+      "share": 0,
+      "engaged": 1
+    },
+    {
+      "id": "ig-6okt",
+      "date": "2026-10-06",
+      "title": "NGALIS 10 MENIT TAHAN 3 HARI",
+      "dur": 3681,
+      "viewers": 33,
+      "puncak": 6,
+      "komen": 5,
+      "share": 0,
+      "engaged": 3
+    }
+  ],
+  "klik": {},
+  "log": [],
+  "linkUrl": "https://contoh-domain.vercel.app/go"
+}

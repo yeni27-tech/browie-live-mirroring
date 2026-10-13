@@ -1,0 +1,60 @@
+{
+  "manifest_version": 3,
+  "name": "browie Live Mirroring",
+  "version": "0.8.0",
+  "description": "Pengumpul data Shopee untuk laporan live mirroring browie: mode intip Seller Centre, pet pemantau proses, dan ringkasan dari dashboard online tim.",
+  "permissions": [
+    "storage",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "https://*.shopee.co.id/*",
+    "https://*.vercel.app/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Buka dashboard browie Live Mirroring"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.shopee.co.id/*"
+      ],
+      "exclude_matches": [
+        "https://shopee.co.id/*"
+      ],
+      "js": [
+        "intip-hook.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.shopee.co.id/*"
+      ],
+      "exclude_matches": [
+        "https://shopee.co.id/*"
+      ],
+      "js": [
+        "intip-relay.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://*.shopee.co.id/*"
+      ],
+      "exclude_matches": [
+        "https://shopee.co.id/*"
+      ],
+      "js": [
+        "tarik-sesi.js",
+        "pet.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

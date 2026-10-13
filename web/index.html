@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>browie Live Mirroring</title>
+<script src="theme.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="overlay" id="login-view" hidden>
+  <div class="login-wrap" style="margin:0">
+    <div class="panel">
+      <h1>Masuk <b>admin</b></h1>
+      <p class="sub">Khusus Yeni dan manager host, untuk mengisi dan mengoreksi data. Tamu tidak perlu masuk.</p>
+      <form id="login-form">
+        <input type="password" id="login-pass" placeholder="Password admin" autocomplete="current-password">
+        <button class="primary" type="submit" id="login-btn">Masuk</button>
+        <button type="button" id="login-batal" style="margin-top:8px">Batal</button>
+        <p class="msg" id="login-msg"></p>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header>
+    <h1>browie <b>Live Mirroring</b></h1>
+    <span class="sub" id="fresh"></span>
+    <span class="spacer"></span>
+    <span id="peran"></span>
+    <label class="theme" for="theme-sel">Tampilan
+      <select id="theme-sel"><option value="auto">Ikut sistem</option><option value="light">Terang</option><option value="dark">Gelap</option></select>
+    </label>
+    <button id="btn-login" hidden>Masuk admin</button>
+    <button id="btn-logout" hidden>Keluar admin</button>
+  </header>
+  <div class="alert warn" id="alert" hidden></div>
+
+  <div id="lm"></div>
+  <!-- ===== ADMIN (Yeni + manager host) ===== -->
+  <section id="admin" hidden>
+    <button class="adm-kembali" id="adm-kembali" hidden>← Kembali ke halaman sebelumnya</button>
+    <div class="adm-bar">
+      <button class="primary" id="adm-ig">📸 Impor screenshot (IG / Shopee)</button>
+      <button id="adm-sh">+ Sesi Shopee</button>
+      <button id="adm-kelola-btn">🗂 Kelola data</button>
+      <button id="adm-log-btn">Riwayat perubahan</button>
+      <button id="adm-set-btn">⚙️ Pengaturan</button>
+      <button id="adm-petunjuk-btn">📖 Petunjuk admin</button>
+      <button id="adm-awal" hidden>Muat data awal 6–7 Okt</button>
+      <span class="msg" id="adm-msg"></span>
+    </div>
+    <input type="file" id="adm-file" accept="image/*" multiple hidden>
+    <div class="drop" id="adm-drop" tabindex="0" role="button" aria-label="Pilih screenshot Insights Instagram" hidden>
+      <b>Taruh screenshot di sini</b> — Insights live Instagram atau Tinjauan Data Shopee<br>atau klik untuk memilih, atau tempel (⌘V / Ctrl+V). Bisa beberapa sekaligus, jenisnya dikenali otomatis.<br>
+      <span class="msg">Dibaca di perangkat ini (Tesseract), tanpa AI. Pertama kali mengunduh mesin baca ±7 MB.</span>
+    </div>
+    <div id="adm-imports"></div>
+    <div class="panel" id="adm-form-wrap" hidden><h2 id="adm-form-title"></h2><form id="adm-form" autocomplete="off"></form></div>
+    <div class="panel" id="adm-kelola" hidden>
+      <h2>Kelola data</h2>
+      <div class="kelola-bar">
+        <span class="row" id="kl-jenis" role="group" aria-label="Jenis data"></span>
+        <input type="text" id="kl-cari" placeholder="Cari tanggal (mis. 7 Okt / 2026-10-07) atau judul">
+        <span id="kl-aksi"></span>
+      </div>
+      <div class="tablebox"><table id="kl-tbl"></table></div>
+      <div class="pager" id="kl-pager"></div>
+      <p class="note">Sesi yang datang dari ekstensi tidak hilang permanen, hanya disembunyikan supaya tidak muncul lagi saat ekstensi menarik ulang. Semua penghapusan tercatat di Riwayat perubahan.</p>
+    </div>
+    <div class="panel" id="adm-set" hidden>
+      <h2>⚙️ Pengaturan</h2>
+      <div class="set-blok">
+        <h3>Kunci JEV (untuk memilah komentar live)</h3>
+        <p class="msg">Tempel kunci API dari TypeSafe. Kunci diuji dulu sebelum disimpan, disimpan di server, dan <b>tidak pernah ditampilkan lagi</b> — di sini hanya terlihat 4 huruf terakhirnya.</p>
+        <p id="set-jev-status"></p>
+        <div class="row"><input type="password" id="set-jev" placeholder="Tempel kunci JEV di sini" autocomplete="off" style="flex:1 1 280px">
+          <button class="primary" id="set-jev-simpan">Uji &amp; simpan</button><button id="set-jev-uji">Uji kunci tersimpan</button><span id="set-jev-hapus-wrap"></span></div>
+        <p class="msg" id="set-jev-msg"></p>
+      </div>
+      <div class="set-blok">
+        <h3>Link tujuan Shopee (untuk link penghitung IG)</h3>
+        <p class="msg">Penonton yang klik link penghitung di live IG diteruskan ke link ini. Ganti di sini kalau link toko/produk Shopee berubah — link penghitung untuk IG tetap sama.</p>
+        <div class="row"><input type="text" id="set-shopee" placeholder="https://shopee.co.id/..." style="flex:1 1 280px"><button class="primary" id="set-shopee-simpan">Simpan</button></div>
+        <p class="msg" id="set-shopee-msg"></p>
+      </div>
+    </div>
+    <div class="panel panel-petunjuk" id="adm-petunjuk" hidden>
+      <h2>📖 Petunjuk admin — cara mengisi data</h2>
+      <h3>Setiap selesai live (±3 menit)</h3>
+      <ol>
+        <li><b>Shopee:</b> buka Seller Centre → Live Streaming → klik sesi yang baru selesai → <b>Tinjauan Data</b>. Screenshot seluruh kotak angkanya.</li>
+        <li><b>Instagram:</b> buka Instagram → profil → live yang baru selesai → <b>Insights</b>. Screenshot halamannya.</li>
+        <li>Di sini, tekan <b>📸 Impor screenshot</b> → pilih kedua screenshot sekaligus (atau tempel dengan ⌘V / Ctrl+V).</li>
+        <li>Cek angka yang terbaca. Kolom <span class="pill w">kuning</span> = belum terbaca atau perlu dicek, isi/betulkan manual. <b>Jam mulai</b> Shopee wajib diisi (lihat tulisan "Waktu Mulai" di atas Tinjauan Data).</li>
+        <li>Untuk Instagram, pilih <b>sesi Shopee pasangannya</b> (yang tayang bersamaan). Biasanya sudah ditebak otomatis.</li>
+        <li>Tekan <b>Simpan</b>. Selesai — tim langsung melihat hasilnya di link dashboard.</li>
+      </ol>
+      <h3>Kalau sempat (melengkapi)</h3>
+      <ol>
+        <li><b>Asal penonton Shopee:</b> buka dashboard live Shopee (kotak oranye) → Sumber Menonton Livestream → ketik 6 persentasenya lewat tombol <b>✏️ Ubah Shopee</b> di sesi itu.</li>
+        <li><b>Produk terjual:</b> di Tinjauan Data → Penjualan → <b>Lihat Rincian</b> → isi baris produk di ✏️ Ubah Shopee.</li>
+        <li><b>Komentar live:</b> salin komentar dari live (Shopee/IG), tempel di bagian <b>Komentar live · dipilah JEV</b>, tekan Pilah. Pertama kali, tempel dulu <b>kunci JEV</b> di ⚙️ Pengaturan.</li>
+        <li><b>Aksi untuk live berikutnya:</b> setelah angka & komentar lengkap, tekan <b>🎯 Minta rekomendasi JEV</b>. JEV memilih masalah utama sesi + aksi konkretnya. Bahas hasilnya dengan host sebelum live berikutnya.</li>
+      </ol>
+      <h3>Lain-lain</h3>
+      <ol>
+        <li><b>Di mana semua alat ini?</b> Di tab <b>🛠 Admin</b> (paling kanan). Tombol ✏️ Ubah di tab Per Sesi otomatis membawamu ke sini, dan tombol <b>← Kembali</b> mengembalikanmu.</li>
+        <li><b>Salah isi?</b> Buka sesinya → ✏️ Ubah. Koreksi admin selalu menang atas data dari ekstensi.</li>
+        <li><b>Data dobel / tidak penting?</b> 🗂 Kelola data → centang → Hapus terpilih.</li>
+        <li><b>Siapa mengubah apa?</b> Riwayat perubahan mencatat apa dan jam berapa (password admin dipakai bersama, jadi nama tidak tercatat).</li>
+        <li><b>Link penghitung:</b> pastikan link beli di live IG memakai link di panel "Link penghitung IG → Shopee", bukan link Shopee langsung.</li>
+      </ol>
+    </div>
+    <div class="panel" id="adm-log-wrap" hidden><h2>Riwayat perubahan (100 terakhir)</h2><ul class="adm-log" id="adm-log"></ul></div>
+  </section>
+
+
+  <div id="toast" class="toast" role="status" hidden></div>
+</div>
+<script src="session-core.js"></script>
+<script src="session-render.js"></script>
+<script src="viewer.js"></script>
+<script src="admin.js"></script>
+<script src="pet-web.js"></script>
+</body>
+</html>

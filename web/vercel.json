@@ -1,0 +1,39 @@
+{
+  "rewrites": [
+    {
+      "source": "/go",
+      "destination": "/api/go"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    }
+  ],
+  "functions": {
+    "api/admin.js": {
+      "maxDuration": 60
+    }
+  },
+  "regions": [
+    "sin1"
+  ]
+}
