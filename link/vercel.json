@@ -1,0 +1,8 @@
+{
+  "rewrites": [{ "source": "/:kode([A-Za-z0-9]{8})", "destination": "/api/l?kode=:kode" }],
+  "headers": [{ "source": "/(.*)", "headers": [
+    { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
+    { "key": "X-Content-Type-Options", "value": "nosniff" },
+    { "key": "Referrer-Policy", "value": "no-referrer" } ] }],
+  "regions": ["sin1"]
+}

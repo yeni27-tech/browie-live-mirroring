@@ -29,6 +29,9 @@ function jalan([c, k, ...a]) {
     case "HGET": return H(k).get(a[0]) ?? null;
     case "HMGET": return a.map((f) => H(k).get(f) ?? null);
     case "HGETALL": return [...H(k)].flat();
+    case "HEXISTS": return H(k).has(a[0]) ? 1 : 0;
+    case "SET": { if (a.includes("NX") && db.has(k)) return null; db.set(k, a[0]); return "OK"; }
+    case "EVAL": return H("lm:set").has("kodeAktif") ? 0 : jalan(["HINCRBY", "lm:klik", a[2], 1]);
     case "HDEL": return H(k).delete(a[0]) ? 1 : 0;
     case "HLEN": return H(k).size;
     case "LPUSH": L(k).unshift(a[0]); return L(k).length;
@@ -51,6 +54,11 @@ globalThis.fetch = async (url, init) => {
     b.state.comments.split("\n").forEach((line, i) => { answers["c" + (i + 1)] = { choice: /harga|berapa/i.test(line) ? "tanya_harga" : /checkout|co |order|keranjang/i.test(line) ? "minat_beli" : "lainnya", confidence: 0.9 }; });
     return { ok: true, status: 200, json: async () => ({ answers }) };
   }
+  if (String(url).includes("/api/kode-klik")) {
+    const h = (await import("../api/kode-klik.js")).default, u = new URL(url), res = mkRes();
+    await h({ method: "GET", url: u.pathname + u.search, query: Object.fromEntries(u.searchParams), headers: { authorization: init.headers.Authorization } }, res);
+    return { ok: res.statusCode === 200, status: res.statusCode, json: async () => res.body };
+  }
   panggilan++;
   if (mode === "mati") throw new Error("ECONNREFUSED");
   if (mode === "lambat") await new Promise((r) => setTimeout(r, 3000));
@@ -58,7 +66,7 @@ globalThis.fetch = async (url, init) => {
   return { ok: true, json: async () => cmds.map((c) => ({ result: jalan(c) })) };
 };
 Object.assign(process.env, { KV_REST_API_URL: "https://contoh.upstash.io", KV_REST_API_TOKEN: "t", SHOPEE_URL: "https://shopee.co.id/browie",
-  PUSH_TOKEN: "rahasia-push", SESSION_SECRET: "s3cret", ADMIN_PASSWORD: "admin-browie", JEV_KEY: "kunci-jev" });
+  PUSH_TOKEN: "rahasia-push", LINK_SECRET: "rahasia-link", DASH_URL: "https://lm.vercel.app", SESSION_SECRET: "s3cret", ADMIN_PASSWORD: "admin-browie", JEV_KEY: "kunci-jev" });
 
 const go = (await import("../api/go.js")).default;
 const { kunciKlik } = await import("../api/go.js");
@@ -240,7 +248,10 @@ await tes("pengaturan: link tujuan Shopee dari web dipakai link penghitung; link
   assert.equal((await aksi({ aksi: "pengaturan", shopeeUrl: "https://penipu.com/shopee" })).statusCode, 400);
   assert.equal((await aksi({ aksi: "pengaturan", shopeeUrl: "https://shopee.co.id/browieofficial" })).statusCode, 200);
   const r = mkRes(); await go(mkReq("GET", { headers: { "user-agent": "Instagram" } }), r);
-  assert.equal(r.headers.location, "https://shopee.co.id/browieofficial");
+  assert.equal(r.statusCode, 410); // begitu link Shopee disimpan, kode unik dibuat dan /go dimatikan
+  const l = (await import("../../link/api/l.js")).default, d = (await lihatData(ck("admin"))).body;
+  const r2 = mkRes(), q = mkReq("GET", { headers: { "user-agent": "Instagram" } }); q.query = { kode: d.link.aktif }; await l(q, r2);
+  assert.equal(r2.headers.location, "https://shopee.co.id/browieofficial");
   assert.equal((await lihatData(ck("admin"))).body.pengaturan.shopeeUrl, "https://shopee.co.id/browieofficial");
 });
 
@@ -272,7 +283,7 @@ await tes("push: id/tanggal tidak sah ditolak per baris", async () => {
 });
 await tes("data: tamu tanpa password boleh lihat (tanpa riwayat); ekstensi boleh baca dengan token", async () => {
   const tamu = await lihatData({ host: "lm.vercel.app" }); assert.equal(tamu.statusCode, 200);
-  assert.equal(tamu.body.peran, "tamu"); assert.equal(tamu.body.log, undefined); assert.equal(tamu.body.linkUrl, "https://lm.vercel.app/go"); assert.ok(Array.isArray(tamu.body.sh)); // isi bisa tertinggal ≤30 dtk (salinan tamu)
+  assert.equal(tamu.body.peran, "tamu"); assert.equal(tamu.body.log, undefined); assert.equal(tamu.body.linkUrl, undefined); // tamu tidak melihat link penghitung assert.ok(Array.isArray(tamu.body.sh)); // isi bisa tertinggal ≤30 dtk (salinan tamu)
   const ext = (await lihatData({ ...EXT, host: "lm.vercel.app" })).body; assert.equal(ext.peran, "ekstensi");
 });
 await tes("push kode pelacakan (off): disimpan per hari-kampanye, ditimpa saat kirim ulang, data kotor ditolak, token wajib", async () => {
@@ -286,5 +297,42 @@ await tes("push kode pelacakan (off): disimpan per hari-kampanye, ditimpa saat k
   r = mkRes(); await push(mkReq("POST", { headers: EXT, body: { off: [{ ...baris, visits: 55 }] } }), r);
   d = (await lihatData(ck("admin"))).body; assert.equal(d.off.filter((o) => o.campaign === "NGALIS10MENITTAHAN3HARI").length, 1); assert.equal(d.off.find((o) => o.campaign === "NGALIS10MENITTAHAN3HARI").visits, 55);
   r = mkRes(); await push(mkReq("POST", { headers: EXT, body: { foo: 1 } }), r); assert.equal(r.statusCode, 400);
+});
+await tes("link unik: simpan link Shopee → kode acak di alamat terpisah; ganti link → kode baru + riwayat; /go mati", async () => {
+  const l = (await import("../../link/api/l.js")).default;
+  const u1 = "https://shopee.co.id/universal-link/browieofficial?utm_campaign=s1_ss_id_igbp_ngalis10menittahan3hari&utm_source=instagram";
+  let r = await aksi({ aksi: "pengaturan", shopeeUrl: u1 }); assert.equal(r.statusCode, 200);
+  let d = (await lihatData(ck("admin"))).body;
+  assert.match(d.link.aktif, /^[A-Za-z0-9]{8}$/); assert.ok(d.link.url.endsWith("/" + d.link.aktif)); assert.ok(!d.link.url.includes("lm.vercel.app"));
+  const n0 = d.link.riwayat.length; assert.ok(d.link.riwayat.filter((x) => !x.selesai).length === 1); assert.equal(d.link.riwayat[0].kampanye, "s1_ss_id_igbp_ngalis10menittahan3hari");
+  const k1 = d.link.aktif;
+  // tamu tidak melihat link
+  const tamu = (await lihatData({ host: "lm.vercel.app" })).body; assert.equal(tamu.link, undefined); assert.ok(!tamu.linkUrl);
+  // simpan link yang sama → kode tidak berganti
+  await aksi({ aksi: "pengaturan", shopeeUrl: u1 }); assert.equal((await lihatData(ck("admin"))).body.link.aktif, k1);
+  // klik: sekali per perangkat per 10 menit
+  const klik = async (kode, cookie) => { const res = mkRes(); const req = mkReq("GET", { headers: { "user-agent": "Instagram", ...(cookie ? { cookie } : {}) } }); req.query = { kode }; await l(req, res); return res; };
+  let a1 = await klik(k1); assert.equal(a1.statusCode, 302); assert.equal(a1.headers.location, u1);
+  const v = /v=([a-f0-9]{16})/.exec(a1.headers["set-cookie"])[1];
+  await klik(k1, "v=" + v); await klik(k1, "v=" + v); await klik(k1, "v=bbbbbbbbbbbbbbbb");
+  // ganti link → kode baru, kode lama ditutup, klik kode lama diteruskan ke link terbaru & dicatat terpisah
+  const u2 = "https://shopee.co.id/universal-link/browieofficial?utm_campaign=s1_ss_id_igbp_alisbedasebelah";
+  await aksi({ aksi: "pengaturan", shopeeUrl: u2 });
+  d = (await lihatData(ck("admin"))).body; const k2 = d.link.aktif; assert.notEqual(k2, k1);
+  const lama = await klik(k1, "v=cccccccccccccccc"); assert.equal(lama.headers.location, u2);
+  d = (await lihatData(ck("admin"))).body;
+  const rk1 = d.link.riwayat.find((x) => x.kode === k1), rk2 = d.link.riwayat.find((x) => x.kode === k2);
+  assert.equal(rk1.klik, 2); assert.equal(rk1.klikLama, 1); assert.ok(rk1.selesai); assert.equal(rk2.selesai, null); assert.ok(rk2.aktif);
+  // kode tebakan → 404, tidak diteruskan
+  const tebak = await klik("Zz9Zz9Zz"); assert.equal(tebak.statusCode, 404);
+  // pintu dashboard tanpa / dengan token salah ditolak
+  const kk = (await import("../api/kode-klik.js")).default; const tk = mkRes();
+  await kk({ method: "GET", query: { kode: k2, v: "a".repeat(16) }, headers: { authorization: "Bearer salah" } }, tk); assert.equal(tk.statusCode, 401);
+  const salah = await klik("../../x"); assert.equal(salah.statusCode, 404);
+  // ganti kode manual (link Shopee tetap)
+  r = await aksi({ aksi: "kode-baru" }); assert.equal(r.statusCode, 200);
+  d = (await lihatData(ck("admin"))).body; assert.notEqual(d.link.aktif, k2); assert.equal(d.link.riwayat.length, n0 + 2);
+  // /go di alamat dashboard sudah mati
+  const g = mkRes(); await go(mkReq("GET", { headers: {} }), g); assert.equal(g.statusCode, 410);
 });
 console.log("\n" + n + " tes lolos");

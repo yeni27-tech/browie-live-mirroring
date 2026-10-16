@@ -1,0 +1,6 @@
+{
+  "name": "brw-link",
+  "private": true,
+  "type": "module",
+  "description": "Link penghitung unik per sesi untuk browie Live Mirroring (proyek terpisah dari dashboard)."
+}

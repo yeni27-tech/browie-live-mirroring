@@ -90,7 +90,31 @@
     $("#set-jev-hapus-wrap").innerHTML = !p.jevTerpasang || !p.jevDariWeb ? "" : hapusJevKonfirm
       ? '<button class="danger" id="set-jev-hapus-ok">Ya, hapus kunci</button> <button id="set-jev-hapus-batal">Batal</button>' : '<button class="danger" id="set-jev-hapus">Hapus kunci</button>';
     const inp = $("#set-shopee"); if (document.activeElement !== inp) inp.value = p.shopeeUrl || "";
+    renderLink();
   }
+  /* ---------- link penghitung unik per sesi + riwayatnya ---------- */
+  let linkHal = 1, gantiKonfirm = false;
+  function renderLink() {
+    const L = (app.data && app.data.link) || null, el = $("#set-link");
+    if (!L) { el.innerHTML = ""; return; }
+    const tgl = (ms) => (ms ? new Date(ms).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
+    const r = L.riwayat || [], per = 10, n = Math.max(1, Math.ceil(r.length / per)); linkHal = Math.min(linkHal, n);
+    const baris = r.slice((linkHal - 1) * per, linkHal * per).map((x) => `<tr><td><code>${esc(x.kode)}</code>${x.aktif ? ' <span class="pill g">aktif</span>' : ""}</td><td style="max-width:260px;overflow-wrap:anywhere">${esc(x.kampanye || "—")}<br><small class="msg">${esc(x.url)}</small></td><td>${tgl(x.mulai)}</td><td>${x.selesai ? tgl(x.selesai) : "masih dipakai"}</td><td style="text-align:right">${x.klik}</td><td style="text-align:right">${x.klikLama || 0}</td></tr>`).join("");
+    el.innerHTML = (L.url
+      ? `<div class="lm-link-row" style="margin-top:8px"><b>Link untuk live IG sekarang:</b> <code>${esc(L.url)}</code> <button data-copy-link="${esc(L.url)}">Salin link</button> ${gantiKonfirm ? '<button class="danger" id="set-kode-ok">Ya, ganti kode</button> <button id="set-kode-batal">Batal</button>' : '<button id="set-kode">Ganti kode (link Shopee tetap)</button>'} <span class="msg" id="set-link-msg"></span></div>`
+      : '<p class="msg">Belum ada link penghitung. Simpan Link tujuan Shopee di atas untuk membuat yang pertama.</p>')
+      + (r.length ? `<h3 style="margin-top:14px">Riwayat link penghitung</h3><div class="tablebox"><table><thead><tr><th>Kode</th><th>Kampanye / link Shopee</th><th>Mulai</th><th>Diganti</th><th>Klik saat aktif</th><th>Klik setelah diganti</th></tr></thead><tbody>${baris}</tbody></table></div>`
+        + (n > 1 ? `<div class="pager">${Array.from({ length: n }, (_, i) => `<button data-link-hal="${i + 1}" ${i + 1 === linkHal ? 'class="on"' : ""}>${i + 1}</button>`).join("")}</div>` : "")
+        + '<p class="msg">Klik dihitung sekali per perangkat per 10 menit. "Klik setelah diganti" = orang yang membuka link lama; mereka tetap diteruskan ke link Shopee terbaru.</p>' : "");
+  }
+  document.addEventListener("click", async (e) => {
+    const t = e.target.closest("button"); if (!t || !$("#set-link").contains(t)) return;
+    if (t.dataset.linkHal) { linkHal = +t.dataset.linkHal; renderLink(); return; }
+    if (t.dataset.copyLink) { try { await navigator.clipboard.writeText(t.dataset.copyLink); $("#set-link-msg").textContent = "Tersalin."; } catch { $("#set-link-msg").textContent = "Salin manual dari kotak di atas."; } return; }
+    if (t.id === "set-kode") { gantiKonfirm = true; renderLink(); return; }
+    if (t.id === "set-kode-batal") { gantiKonfirm = false; renderLink(); return; }
+    if (t.id === "set-kode-ok") { gantiKonfirm = false; try { await api("kode-baru"); await app.muat(); pesan("Kode baru dibuat. Ganti link di live IG."); } catch (er) { pesan(er.message, 1); } }
+  });
   document.addEventListener("lm:data", () => { if (!$("#adm-set").hidden) renderSet(); });
   $("#adm-set-btn").addEventListener("click", () => { const w = $("#adm-set"); w.hidden = !w.hidden; if (!w.hidden) { renderSet(); w.scrollIntoView({ behavior: "smooth", block: "start" }); } });
   $("#set-jev-simpan").addEventListener("click", async () => {
@@ -107,7 +131,7 @@
   $("#set-shopee-simpan").addEventListener("click", async () => {
     const u = $("#set-shopee").value.trim(), m = $("#set-shopee-msg");
     if (!/^https:\/\/(s\.)?shopee\.co\.id\/\S*$|^https:\/\/shope\.ee\/\S+$/.test(u)) { m.textContent = "Link harus diawali https://shopee.co.id/ , https://s.shopee.co.id/ , atau https://shope.ee/"; return; }
-    try { await api("pengaturan", { shopeeUrl: u }); m.textContent = "Tersimpan. Klik berikutnya di link penghitung diteruskan ke link ini."; renderSet(); } catch (e) { m.textContent = e.message; }
+    try { await api("pengaturan", { shopeeUrl: u }); m.textContent = "Tersimpan. Kalau link Shopee berubah, link penghitung baru dibuat di bawah. Salin dan pasang di live IG."; await app.muat(); renderSet(); } catch (e) { m.textContent = e.message; }
   });
 
   /* ---------- riwayat ---------- */

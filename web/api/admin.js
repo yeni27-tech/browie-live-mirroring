@@ -12,6 +12,7 @@
 //   pengaturan { jevKey?, hapusJev?, shopeeUrl? } — dari tab Pengaturan admin (kunci JEV diuji dulu sebelum disimpan)
 //   uji-jev {}               — cek kunci JEV yang tersimpan masih diterima TypeSafe
 //   data-awal {}             — isi angka asli 6–7 Okt 2026 (hanya kalau penyimpanan masih kosong)
+import { cmdsKodeBaru } from "./_kode.js";
 import { peranCookie, readBody } from "./_auth.js";
 import { redis } from "./_redis.js";
 import { bacaSh, catatLog, bacaPengaturan } from "./_store.js";
@@ -167,11 +168,26 @@ export default async function handler(req, res) {
         if (typeof b.shopeeUrl === "string") {
           const u = b.shopeeUrl.trim();
           if (!/^https:\/\/(s\.)?shopee\.co\.id\/\S*$|^https:\/\/shope\.ee\/\S+$/.test(u) || u.length > 500) return res.status(400).json({ error: "Link Shopee harus diawali https://shopee.co.id/ , https://s.shopee.co.id/ , atau https://shope.ee/" });
+          const [lamaUrl, aktif] = (await redis([["HGET", "lm:set", "shopeeUrl"], ["HGET", "lm:set", "kodeAktif"]]));
           cmds.push(["HSET", "lm:set", "shopeeUrl", u]); catatan.push("ganti link tujuan Shopee");
+          // Link Shopee berganti (atau belum ada kode sama sekali) → kode link penghitung baru; kode lama ditutup & masuk riwayat.
+          if (u !== lamaUrl || !aktif) {
+            let lama = null; if (aktif) { const r = await redis([["HGET", "lm:kode", aktif]]); try { lama = JSON.parse(r[0]); } catch {} }
+            const k = cmdsKodeBaru(u, lama, Date.now()); cmds.push(...k.cmds); catatan.push("kode link baru " + k.kode);
+          }
         }
         if (!cmds.length) return res.status(400).json({ error: "Tidak ada yang diubah." });
         await redis([...cmds, ...catatLog("Pengaturan: " + catatan.join(", "))]);
         return res.json({ ok: true });
+      }
+      case "kode-baru": {
+        // Ganti kode tanpa mengganti link Shopee (mis. link lama tersebar ke tempat yang tidak semestinya).
+        const [u, aktif] = await redis([["HGET", "lm:set", "shopeeUrl"], ["HGET", "lm:set", "kodeAktif"]]);
+        if (!u) return res.status(400).json({ error: "Isi Link tujuan Shopee dulu." });
+        let lama = null; if (aktif) { const r = await redis([["HGET", "lm:kode", aktif]]); try { lama = JSON.parse(r[0]); } catch {} }
+        const k = cmdsKodeBaru(u, lama, Date.now());
+        await redis([...k.cmds, ...catatLog("Kode link penghitung diganti manual → " + k.kode)]);
+        return res.json({ ok: true, kode: k.kode });
       }
       case "uji-jev": {
         const { jevKey } = await bacaPengaturan();
