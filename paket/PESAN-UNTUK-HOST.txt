@@ -1,5 +1,5 @@
 PESAN UNTUK MANAGER HOST — salin ke chat PRIBADI (bukan grup), lampirkan 2 file:
-  1) browie-live-mirroring-ekstensi-v0.8.1.zip
+  1) browie-live-mirroring-ekstensi-v0.9.0.zip
   2) PANDUAN-HOST.md
 Ganti bagian [ … ] dengan isi dari file ~/browie-live-rahasia.txt.
 ==========================================================================
@@ -7,7 +7,7 @@ Ganti bagian [ … ] dengan isi dari file ~/browie-live-rahasia.txt.
 Hai kak! Ini untuk laporan live mirroring browie (live yang tayang di Instagram + Shopee sekaligus). 🙌
 
 Dua file terlampir:
-• browie-live-mirroring-ekstensi-v0.8.1.zip → ekstensi Chrome, dipasang di laptop yang login Seller Centre Shopee browie
+• browie-live-mirroring-ekstensi-v0.9.0.zip → ekstensi Chrome, dipasang di laptop yang login Seller Centre Shopee browie
 • PANDUAN-HOST.md → langkah demi langkah (±15 menit, sekali saja)
 
 Yang dibutuhkan:

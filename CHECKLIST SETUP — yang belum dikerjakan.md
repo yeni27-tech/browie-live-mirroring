@@ -46,7 +46,7 @@ Buka tab **🛠 Admin** → klik **⚙️ Pengaturan**.
 
 ### A6. Kirim ke host (2 menit)
 Lewat **chat pribadi**, bukan grup. Dari folder `Live Mirroring/paket/`:
-- [ ] File `browie-live-mirroring-ekstensi-v0.8.1.zip`
+- [ ] File `browie-live-mirroring-ekstensi-v0.9.0.zip`
 - [ ] File `PANDUAN-HOST.md`
 - [ ] Pesan dari `PESAN-UNTUK-HOST.txt`, setelah dua tanda `[ … ]` diganti password admin dan kode kirim.
 

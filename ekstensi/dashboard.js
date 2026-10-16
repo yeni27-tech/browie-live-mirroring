@@ -39,17 +39,24 @@
     if (!res.ok) throw new Error("Dashboard online menjawab HTTP " + res.status);
     return res.json();
   }
+  // Status saja (tanpa grafik): sambungan ke dashboard online + sesi terakhir yang sudah sampai di sana.
   async function renderRingkasan() {
-    const m = $("#rk-msg"), link = $("#buka-admin");
+    const m = $("#rk-msg"), link = $("#buka-admin"), el = $("#lm");
     link.hidden = !settings.dashUrl; if (settings.dashUrl) link.href = settings.dashUrl;
-    if (!settings.dashUrl || !settings.pushToken) { $("#lm").innerHTML = '<div class="panel empty">Isi alamat dashboard online dan kode kirim di tab ⚙️ Pengaturan.</div>'; m.textContent = ""; return; }
-    m.textContent = "Memuat…";
+    if (!settings.dashUrl || !settings.pushToken) { el.innerHTML = '<div class="empty">Isi alamat dashboard online dan kode kirim di tab ⚙️ Pengaturan.</div>'; m.textContent = ""; return; }
+    m.textContent = "Mengecek…";
     try {
-      const j = await ambilServer();
-      const data = { sh: j.sh || [], ig: j.ig || [], jev: j.jev || {}, aksi: j.aksi || {}, klik: j.klik || {}, linkUrl: j.linkUrl };
-      if (dash) dash.update(data); else dash = lmMount($("#lm"), data);
-      m.textContent = "Diperbarui " + waktu(Date.now());
-    } catch (e) { m.textContent = navigator.onLine === false ? "Internet laptop terputus." : e.message; }
+      const j = await ambilServer(), sh = (j.sh || []).slice().sort((a, b) => (a.date + (a.start || "") < b.date + (b.start || "") ? 1 : -1));
+      const ps = await store.get("petStatus", {}), sc = (ps && ps.scrape) || {};
+      const x = sh[0], esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      el.innerHTML = `<div class="lm-facts"><div><span>Sambungan</span><b><span class="pill g">Tersambung</span></b></div>
+        <div><span>Sesi Shopee di dashboard</span><b>${sh.length}</b></div>
+        <div><span>Sesi terakhir yang sampai</span><b>${x ? esc(x.date + " " + (x.start || "")) : "—"}</b></div>
+        <div><span>Tarikan terakhir di laptop ini</span><b>${sc.at ? waktu(sc.at) : "belum pernah"}</b></div>
+        <div><span>Status tarikan</span><b>${esc(sc.state === "gagal" ? "Gagal: " + (sc.galat || "") : sc.msg || sc.state || "—")}</b></div></div>
+        <p class="msg">Kalau ada live yang belum muncul: buka Seller Centre di Chrome ini, klik Si Henna → <b>Tarik sesi live</b> → <b>Kirim</b>.</p>`;
+      m.textContent = "Dicek " + waktu(Date.now());
+    } catch (e) { m.textContent = navigator.onLine === false ? "Internet laptop terputus." : e.message; el.innerHTML = ""; }
   }
 
   /* ---------- mode intip ---------- */

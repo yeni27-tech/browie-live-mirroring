@@ -83,6 +83,6 @@ Kode kirim ekstensi (host)     : $PUSH_TOKEN
 Langkah berikutnya:
  1. Buka $ALIAS → Masuk admin → "Muat data awal 6–7 Okt".
  2. Kirim ke manager host lewat chat pribadi: alamat dashboard, password admin, kode kirim,
-    dan file paket/browie-live-mirroring-ekstensi-v0.8.1.zip.
+    dan file paket/browie-live-mirroring-ekstensi-v0.9.0.zip.
  3. Ganti link beli di live IG dengan $ALIAS/go
 TXT

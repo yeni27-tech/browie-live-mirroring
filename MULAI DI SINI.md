@@ -21,7 +21,7 @@ Simpan di catatan pribadi. **Jangan tempel ke chat Claude.**
 Buka alamat dashboard → **Masuk admin** → **Muat data awal 6–7 Okt**.
 
 ## 3. Kirim ke manager host (lewat chat pribadi)
-- File `paket/browie-live-mirroring-ekstensi-v0.8.1.zip`
+- File `paket/browie-live-mirroring-ekstensi-v0.9.0.zip`
 - Alamat dashboard, **password admin**, dan **kode kirim**
 - Panduan langkah demi langkah untuk host: `paket/PANDUAN-HOST.md` (kirim juga), dan di dalam zip (`PANDUAN-PASANG.md`) serta tab **📖 Petunjuk** ekstensi
 

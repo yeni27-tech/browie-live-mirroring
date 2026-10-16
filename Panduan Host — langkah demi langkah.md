@@ -4,7 +4,7 @@ Untuk: **manager host** (yang login Seller Centre Shopee browie).
 Lama pasang: ±15 menit, **sekali saja**. Sesudah itu tiap selesai live cukup ±3 menit.
 
 Yang dibutuhkan, **dikirim Yeni lewat chat pribadi**:
-1. File `browie-live-mirroring-ekstensi-v0.8.1.zip`
+1. File `browie-live-mirroring-ekstensi-v0.9.0.zip`
 2. **Alamat dashboard** (contoh: `https://browie-live.vercel.app`)
 3. **Password admin**
 4. **Kode kirim** (deretan huruf-angka panjang)
@@ -15,7 +15,7 @@ Yang dibutuhkan, **dikirim Yeni lewat chat pribadi**:
 
 Pakai **Chrome di laptop yang login Seller Centre Shopee browie**.
 
-1. **Ekstrak zip.** Klik dua kali file `browie-live-mirroring-ekstensi-v0.8.1.zip`. Muncul folder **browie-live-mirroring**.
+1. **Ekstrak zip.** Klik dua kali file `browie-live-mirroring-ekstensi-v0.9.0.zip`. Muncul folder **browie-live-mirroring**.
 2. **Pindahkan folder itu ke tempat aman** (misalnya Dokumen). **Jangan dihapus atau dipindah lagi**, karena ekstensi membacanya dari sana.
 3. Di Chrome, ketik `chrome://extensions` di kolom alamat, tekan Enter.
 4. Nyalakan **Developer mode** (tombol di pojok kanan atas).

@@ -20,7 +20,7 @@
 
   <nav class="tabs" id="tabs">
     <button class="tab-btn is-active" data-tab="petunjuk">📖 Petunjuk</button>
-    <button class="tab-btn" data-tab="ringkasan">📊 Ringkasan</button>
+    <button class="tab-btn" data-tab="ringkasan">📡 Status</button>
     <button class="tab-btn" data-tab="intip">🔎 Mode intip</button>
     <button class="tab-btn" data-tab="pengaturan">⚙️ Pengaturan</button>
   </nav>
@@ -46,7 +46,7 @@
       <ol>
         <li>Screenshot <b>Tinjauan Data</b> sesi itu di Seller Centre (Live Streaming → klik sesi → Tinjauan Data).</li>
         <li>Screenshot <b>Insights</b> live di Instagram (profil → live yang selesai → Insights).</li>
-        <li>Buka <b>dashboard online</b> (tombol di tab 📊 Ringkasan) → <b>Masuk admin</b> → <b>📸 Impor screenshot</b> → pilih kedua screenshot.</li>
+        <li>Buka <b>dashboard online</b> (tombol di tab 📡 Status) → <b>Masuk admin</b> → <b>📸 Impor screenshot</b> → pilih kedua screenshot.</li>
         <li>Cek angkanya. Kolom <span class="pill w">kuning</span> = isi atau betulkan sendiri. Tekan <b>Simpan</b>. Selesai.</li>
       </ol>
       <h3>Pertanyaan yang sering muncul</h3>
@@ -60,10 +60,14 @@
     </div>
   </section>
 
-  <!-- ===== RINGKASAN: dibaca dari dashboard online (sama persis dengan yang dilihat tim) ===== -->
+  <!-- ===== STATUS: semua tampilan laporan ada di dashboard online; ekstensi hanya menarik & mengirim ===== -->
   <section class="pane" id="pane-ringkasan" hidden>
-    <div class="actions"><a class="btn primary" id="buka-admin" target="_blank" rel="noopener" hidden>Buka dashboard online untuk mengisi / mengoreksi data ↗</a><button id="muat-ulang">Muat ulang</button><span class="msg" id="rk-msg"></span></div>
-    <div id="lm"></div>
+    <div class="panel">
+      <h2>📡 Status ekstensi</h2>
+      <p class="msg" style="max-width:70ch">Ekstensi ini hanya bertugas <b>menarik data Shopee dan mengirimnya</b>. Laporan, grafik, dan semua fitur baru ada di <b>dashboard online</b>, jadi tampilan baru tidak perlu update ekstensi.</p>
+      <div class="actions" style="margin-top:12px"><a class="btn primary" id="buka-admin" target="_blank" rel="noopener" hidden>Buka dashboard online ↗</a><button id="muat-ulang">Cek sambungan</button><span class="msg" id="rk-msg"></span></div>
+      <div id="lm" style="margin-top:12px"></div>
+    </div>
   </section>
 
   <!-- ===== MODE INTIP ===== -->
@@ -112,8 +116,6 @@
     </div>
   </section>
 </div>
-<script src="session-core.js"></script>
-<script src="session-render.js"></script>
 <script src="dashboard.js"></script>
 </body>
 </html>
