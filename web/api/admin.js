@@ -12,7 +12,7 @@
 //   pengaturan { jevKey?, hapusJev?, shopeeUrl? } — dari tab Pengaturan admin (kunci JEV diuji dulu sebelum disimpan)
 //   uji-jev {}               — cek kunci JEV yang tersimpan masih diterima TypeSafe
 //   data-awal {}             — isi angka asli 6–7 Okt 2026 (hanya kalau penyimpanan masih kosong)
-import { cmdsKodeBaru } from "./_kode.js";
+import { cmdsKodeBaru, KODE_RE, kampanyeDari } from "./_kode.js";
 import { peranCookie, readBody } from "./_auth.js";
 import { redis } from "./_redis.js";
 import { bacaSh, catatLog, bacaPengaturan } from "./_store.js";
@@ -188,6 +188,44 @@ export default async function handler(req, res) {
         const k = cmdsKodeBaru(u, lama, Date.now());
         await redis([...k.cmds, ...catatLog("Kode link penghitung diganti manual → " + k.kode)]);
         return res.json({ ok: true, kode: k.kode });
+      }
+      case "kode-ubah": {
+        // Ubah link Shopee dan/atau catatan sebuah kode. Kalau kodenya yang aktif, link tujuan ikut berubah.
+        if (!KODE_RE.test(b.kode || "")) return res.status(400).json({ error: "kode salah" });
+        const [raw, aktif] = await redis([["HGET", "lm:kode", b.kode], ["HGET", "lm:set", "kodeAktif"]]);
+        if (!raw) return res.status(404).json({ error: "Kode tidak ditemukan." });
+        const o = JSON.parse(raw), cmds = [];
+        if (typeof b.url === "string" && b.url.trim() !== o.url) {
+          const u = b.url.trim();
+          if (!/^https:\/\/(s\.)?shopee\.co\.id\/\S*$|^https:\/\/shope\.ee\/\S+$/.test(u) || u.length > 500) return res.status(400).json({ error: "Link Shopee harus diawali https://shopee.co.id/ , https://s.shopee.co.id/ , atau https://shope.ee/" });
+          o.url = u; o.kampanye = kampanyeDari(u);
+          if (aktif === b.kode) cmds.push(["HSET", "lm:set", "shopeeUrl", u]);
+        }
+        if (typeof b.catatan === "string") o.catatan = b.catatan.trim().slice(0, 120);
+        cmds.push(["HSET", "lm:kode", b.kode, JSON.stringify(o)]);
+        await redis([...cmds, ...catatLog("Ubah kode link " + b.kode)]);
+        return res.json({ ok: true });
+      }
+      case "kode-hapus": {
+        // Hapus kode beserta hitungan kliknya. Kalau yang dihapus kode aktif, belum ada link aktif sampai dibuat/dipilih lagi.
+        if (!KODE_RE.test(b.kode || "")) return res.status(400).json({ error: "kode salah" });
+        const [aktif] = await redis([["HGET", "lm:set", "kodeAktif"]]);
+        const cmds = [["HDEL", "lm:kode", b.kode], ["HDEL", "lm:klikKode", b.kode], ["HDEL", "lm:klikKodeLama", b.kode]];
+        if (aktif === b.kode) cmds.push(["HDEL", "lm:set", "kodeAktif"]);
+        await redis([...cmds, ...catatLog("Hapus kode link " + b.kode + (aktif === b.kode ? " (yang aktif)" : ""))]);
+        return res.json({ ok: true });
+      }
+      case "kode-aktifkan": {
+        // Jadikan kode lama aktif lagi (link Shopee tujuan = link milik kode itu); kode yang sedang aktif ditutup.
+        if (!KODE_RE.test(b.kode || "")) return res.status(400).json({ error: "kode salah" });
+        const [raw, aktif] = await redis([["HGET", "lm:kode", b.kode], ["HGET", "lm:set", "kodeAktif"]]);
+        if (!raw) return res.status(404).json({ error: "Kode tidak ditemukan." });
+        if (aktif === b.kode) return res.json({ ok: true });
+        const o = JSON.parse(raw), now = Date.now(), cmds = [];
+        if (aktif) { const [r0] = await redis([["HGET", "lm:kode", aktif]]); try { const l = JSON.parse(r0); cmds.push(["HSET", "lm:kode", aktif, JSON.stringify({ ...l, selesai: now })]); } catch {} }
+        cmds.push(["HSET", "lm:kode", b.kode, JSON.stringify({ ...o, selesai: null, diaktifkanLagi: now })], ["HSET", "lm:set", "kodeAktif", b.kode], ["HSET", "lm:set", "shopeeUrl", o.url]);
+        await redis([...cmds, ...catatLog("Aktifkan lagi kode link " + b.kode)]);
+        return res.json({ ok: true });
       }
       case "uji-jev": {
         const { jevKey } = await bacaPengaturan();

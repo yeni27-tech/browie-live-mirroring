@@ -13,12 +13,12 @@ export default async function handler(req, res) {
   if (redisSiap()) {
     // Sejak 17 Okt 2026 link penghitung = kode unik di proyek terpisah. Begitu kode pertama dibuat (lm:set kodeAktif),
     // /go dimatikan supaya alamat dashboard tidak bisa dipakai menembak klik. Klik /go hanya dihitung selama belum ada kode.
-    const cmds = [["HGET", "lm:set", "shopeeUrl"], ["HGET", "lm:set", "kodeAktif"]];
-    if (req.method === "GET" && !bot) cmds.push(["EVAL", "if redis.call('HEXISTS','lm:set','kodeAktif')==0 then return redis.call('HINCRBY','lm:klik',ARGV[1],1) end return 0", 0, kunciKlik(Date.now())]);
+    const cmds = [["HGET", "lm:set", "shopeeUrl"], ["HMGET", "lm:set", "kodeAktif", "goMati"]];
+    if (req.method === "GET" && !bot) cmds.push(["EVAL", "if redis.call('HEXISTS','lm:set','kodeAktif')==0 and redis.call('HEXISTS','lm:set','goMati')==0 then return redis.call('HINCRBY','lm:klik',ARGV[1],1) end return 0", 0, kunciKlik(Date.now())]);
     // Batas waktu sendiri (tidak bergantung pada fetch yang patuh AbortSignal): maks 1,2 dtk, lalu redirect apa pun hasilnya.
     const batas = new Promise((r) => setTimeout(() => r(null), 1200));
     try { const h = await Promise.race([redis(cmds, 1200), batas]);
-      if (h && h[1]) { res.statusCode = 410; res.setHeader("Content-Type", "text/html; charset=utf-8"); res.setHeader("Cache-Control", "no-store");
+      if (h && Array.isArray(h[1]) && (h[1][0] || h[1][1])) { res.statusCode = 410; res.setHeader("Content-Type", "text/html; charset=utf-8"); res.setHeader("Cache-Control", "no-store");
         return res.end('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Link sudah diganti</title><body style="font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;color:#555"><p>Link ini sudah tidak dipakai.</p></body>'); }
       if (h && /^https:\/\/(s\.)?shopee\.co\.id\/|^https:\/\/shope\.ee\//.test(h[0] || "")) tujuan = h[0]; } catch (e) { /* tetap redirect */ }
   }

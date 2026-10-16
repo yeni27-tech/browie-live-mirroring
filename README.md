@@ -1,6 +1,6 @@
 # Live Mirroring browie — project
 
-> **Mau memasang? Baca `MULAI DI SINI.md`.** Paket ekstensi untuk host: `paket/browie-live-mirroring-ekstensi-v0.8.0.zip`.
+> **Mau memasang? Baca `MULAI DI SINI.md`.** Paket ekstensi untuk host: `paket/browie-live-mirroring-ekstensi-v0.8.1.zip`.
 
 **Permintaan:** laporan per sesi live mirroring Instagram + Shopee (divisi live, bukan konten). Tujuan mirroring:
 penonton IG pindah ke toko Shopee browie → co atau follow.
@@ -44,8 +44,8 @@ Keputusan sebelumnya: terpisah dari Pulse · tanpa scraper sinwaz OS · OCR loka
 - **Dashboard tamu tanpa password** (permintaan Yeni); hanya admin yang login (ADMIN_PASSWORD). noindex + robots.txt.
 - **Impor screenshot Shopee (Tinjauan Data)** di samping IG — jenis dikenali otomatis, gambar diperbesar 2× dulu. Dua cara baca: pasangkan label→angka (screenshot tajam) dan cadangan urutan dengan jangkar "Durasi Rata-Rata Menonton". Angka salah baca dikosongkan + kuning, tidak ditebak. Asal penonton & produk tetap manual (persen kecil terbaca tanpa koma).
 - **JEV**: admin tempel komentar live → server (`api/_jev.js`, env JEV_KEY) memilah ke 7 kategori (mau beli, tanya harga, tanya produk, keluhan, pujian, sapaan, lainnya); nama/jam di depan komentar dibuang sebelum dikirim; maks 200, 4 panggilan paralel, maxDuration 60 dtk.
-- **Petunjuk** pola Pulse: "📖 Cara membaca dashboard" + "ℹ️ Ini apa?" di 10 bagian (tamu), "📖 Petunjuk admin" (cara mengisi), tab "📖 Petunjuk" di ekstensi v0.8.0.
-- **Pemasangan**: `web/siapkan-dashboard.sh` (link proyek, Upstash, rahasia, deploy, cek) · `paket/…v0.8.0.zip` (README jadi PANDUAN-PASANG.md, nama ASCII) · `MULAI DI SINI.md`.
+- **Petunjuk** pola Pulse: "📖 Cara membaca dashboard" + "ℹ️ Ini apa?" di 10 bagian (tamu), "📖 Petunjuk admin" (cara mengisi), tab "📖 Petunjuk" di ekstensi v0.8.1.
+- **Pemasangan**: `web/siapkan-dashboard.sh` (link proyek, Upstash, rahasia, deploy, cek) · `paket/…v0.8.1.zip` (README jadi PANDUAN-PASANG.md, nama ASCII) · `MULAI DI SINI.md`.
 - **⚙️ Pengaturan admin di web** (9 Okt): kunci JEV (diuji ke TypeSafe dulu, disimpan di Upstash `lm:set`, browser hanya lihat 4 huruf terakhir) + link tujuan Shopee untuk `/go` (ganti tanpa deploy). Nilai web menang atas env.
 - **🎯 Aksi untuk live berikutnya** (9 Okt): sistem menghitung fakta sesi vs median (`lmFakta`, kata-kata "much lower than…", tanpa teks komentar) → JEV menilai 9 kemungkinan masalah ya/tidak + yakin (`nilaiMasalah`, satu panggilan) → panel menampilkan maks 4 masalah ≥50% + aksi konkret. Tanpa JEV: petunjuk dari aturan angka (butuh ≥3 sesi pembanding). Daftar masalah di `LM_MASALAH` (session-core) dan `MASALAH_JEV` (api/_jev.js) dijaga sama oleh tes.
 - **⚠️ Pengingat data belum lengkap** (9 Okt): kotak di atas dashboard, **khusus admin**, daftar sesi 7 hari terakhir yang belum ada data IG / follow / asal penonton / produk / jam mulai; ketuk tanggal → buka sesinya (`lmBelumLengkap`). Yeni menolak kirim ke Pumble — tidak ada yang dikirim ke luar.

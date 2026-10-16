@@ -93,27 +93,39 @@
     renderLink();
   }
   /* ---------- link penghitung unik per sesi + riwayatnya ---------- */
-  let linkHal = 1, gantiKonfirm = false;
+  let linkHal = 1, gantiKonfirm = false, ubahKode = null, hapusKode = null;
   function renderLink() {
     const L = (app.data && app.data.link) || null, el = $("#set-link");
     if (!L) { el.innerHTML = ""; return; }
     const tgl = (ms) => (ms ? new Date(ms).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
     const r = L.riwayat || [], per = 10, n = Math.max(1, Math.ceil(r.length / per)); linkHal = Math.min(linkHal, n);
-    const baris = r.slice((linkHal - 1) * per, linkHal * per).map((x) => `<tr><td><code>${esc(x.kode)}</code>${x.aktif ? ' <span class="pill g">aktif</span>' : ""}</td><td style="max-width:260px;overflow-wrap:anywhere">${esc(x.kampanye || "—")}<br><small class="msg">${esc(x.url)}</small></td><td>${tgl(x.mulai)}</td><td>${x.selesai ? tgl(x.selesai) : "masih dipakai"}</td><td style="text-align:right">${x.klik}</td><td style="text-align:right">${x.klikLama || 0}</td></tr>`).join("");
+    const aksi = (x) => hapusKode === x.kode
+      ? `<button class="danger" data-kode-hapus-ok="${esc(x.kode)}">Ya, hapus</button> <button data-kode-batal>Batal</button>`
+      : `<button data-kode-ubah="${esc(x.kode)}">Ubah</button> ${x.aktif ? "" : `<button data-kode-aktif="${esc(x.kode)}">Jadikan aktif</button> `}<button class="danger" data-kode-hapus="${esc(x.kode)}">Hapus</button>`;
+    const baris = r.slice((linkHal - 1) * per, linkHal * per).map((x) => ubahKode === x.kode
+      ? `<tr><td><code>${esc(x.kode)}</code></td><td colspan="5"><div class="row" style="flex-wrap:wrap;gap:6px"><input id="ku-url" value="${esc(x.url)}" style="flex:1 1 260px" aria-label="Link Shopee"><input id="ku-cat" value="${esc(x.catatan || "")}" placeholder="Catatan (mis. live 18 Okt malam)" style="flex:1 1 180px" aria-label="Catatan"></div></td><td><button class="primary" data-kode-simpan="${esc(x.kode)}">Simpan</button> <button data-kode-batal>Batal</button></td></tr>`
+      : `<tr><td><code>${esc(x.kode)}</code>${x.aktif ? ' <span class="pill g">aktif</span>' : ""}${x.catatan ? `<br><small class="msg">${esc(x.catatan)}</small>` : ""}</td><td style="max-width:260px;overflow-wrap:anywhere">${esc(x.kampanye || "—")}<br><small class="msg">${esc(x.url)}</small></td><td>${tgl(x.mulai)}</td><td>${x.selesai ? tgl(x.selesai) : "masih dipakai"}</td><td style="text-align:right">${x.klik}</td><td style="text-align:right">${x.klikLama || 0}</td><td style="white-space:nowrap">${aksi(x)}</td></tr>`).join("");
     el.innerHTML = (L.url
       ? `<div class="lm-link-row" style="margin-top:8px"><b>Link untuk live IG sekarang:</b> <code>${esc(L.url)}</code> <button data-copy-link="${esc(L.url)}">Salin link</button> ${gantiKonfirm ? '<button class="danger" id="set-kode-ok">Ya, ganti kode</button> <button id="set-kode-batal">Batal</button>' : '<button id="set-kode">Ganti kode (link Shopee tetap)</button>'} <span class="msg" id="set-link-msg"></span></div>`
-      : '<p class="msg">Belum ada link penghitung. Simpan Link tujuan Shopee di atas untuk membuat yang pertama.</p>')
-      + (r.length ? `<h3 style="margin-top:14px">Riwayat link penghitung</h3><div class="tablebox"><table><thead><tr><th>Kode</th><th>Kampanye / link Shopee</th><th>Mulai</th><th>Diganti</th><th>Klik saat aktif</th><th>Klik setelah diganti</th></tr></thead><tbody>${baris}</tbody></table></div>`
+      : `<p class="msg">Belum ada link penghitung aktif.${(app.data.pengaturan || {}).shopeeUrl ? ' <button id="set-kode-ok">Buat link penghitung</button>' : " Simpan Link tujuan Shopee di atas untuk membuat yang pertama."}</p>`)
+      + (r.length ? `<h3 style="margin-top:14px">Riwayat link penghitung</h3><div class="tablebox"><table><thead><tr><th>Kode</th><th>Kampanye / link Shopee</th><th>Mulai</th><th>Diganti</th><th>Klik saat aktif</th><th>Klik setelah diganti</th><th>Aksi</th></tr></thead><tbody>${baris}</tbody></table></div>`
         + (n > 1 ? `<div class="pager">${Array.from({ length: n }, (_, i) => `<button data-link-hal="${i + 1}" ${i + 1 === linkHal ? 'class="on"' : ""}>${i + 1}</button>`).join("")}</div>` : "")
-        + '<p class="msg">Klik dihitung sekali per perangkat per 10 menit. "Klik setelah diganti" = orang yang membuka link lama; mereka tetap diteruskan ke link Shopee terbaru.</p>' : "");
+        + '<p class="msg">Klik dihitung sekali per perangkat per 10 menit. "Klik setelah diganti" = orang yang membuka link lama; mereka tetap diteruskan ke link Shopee terbaru. Hapus = kode dan hitungan kliknya hilang permanen, link itu jadi "tidak ditemukan".</p>' : "");
   }
   document.addEventListener("click", async (e) => {
     const t = e.target.closest("button"); if (!t || !$("#set-link").contains(t)) return;
-    if (t.dataset.linkHal) { linkHal = +t.dataset.linkHal; renderLink(); return; }
-    if (t.dataset.copyLink) { try { await navigator.clipboard.writeText(t.dataset.copyLink); $("#set-link-msg").textContent = "Tersalin."; } catch { $("#set-link-msg").textContent = "Salin manual dari kotak di atas."; } return; }
+    const d = t.dataset, jalan = async (aksiNama, isi, ok) => { try { await api(aksiNama, isi); await app.muat(); pesan(ok); } catch (er) { pesan(er.message, 1); } renderLink(); };
+    if (d.linkHal) { linkHal = +d.linkHal; renderLink(); return; }
+    if (d.copyLink) { try { await navigator.clipboard.writeText(d.copyLink); $("#set-link-msg").textContent = "Tersalin."; } catch { $("#set-link-msg").textContent = "Salin manual dari kotak di atas."; } return; }
     if (t.id === "set-kode") { gantiKonfirm = true; renderLink(); return; }
     if (t.id === "set-kode-batal") { gantiKonfirm = false; renderLink(); return; }
-    if (t.id === "set-kode-ok") { gantiKonfirm = false; try { await api("kode-baru"); await app.muat(); pesan("Kode baru dibuat. Ganti link di live IG."); } catch (er) { pesan(er.message, 1); } }
+    if (t.id === "set-kode-ok") { gantiKonfirm = false; await jalan("kode-baru", {}, "Link penghitung baru dibuat. Ganti link di live IG."); return; }
+    if ("kodeBatal" in d) { ubahKode = null; hapusKode = null; renderLink(); return; }
+    if (d.kodeUbah) { ubahKode = d.kodeUbah; hapusKode = null; renderLink(); return; }
+    if (d.kodeSimpan) { const url = $("#ku-url").value.trim(), catatan = $("#ku-cat").value; ubahKode = null; await jalan("kode-ubah", { kode: d.kodeSimpan, url, catatan }, "Kode " + d.kodeSimpan + " diubah."); return; }
+    if (d.kodeHapus) { hapusKode = d.kodeHapus; ubahKode = null; renderLink(); return; }
+    if (d.kodeHapusOk) { hapusKode = null; await jalan("kode-hapus", { kode: d.kodeHapusOk }, "Kode " + d.kodeHapusOk + " dihapus."); return; }
+    if (d.kodeAktif) { await jalan("kode-aktifkan", { kode: d.kodeAktif }, "Kode " + d.kodeAktif + " aktif lagi. Link tujuan Shopee ikut diganti ke link milik kode itu."); return; }
   });
   document.addEventListener("lm:data", () => { if (!$("#adm-set").hidden) renderSet(); });
   $("#adm-set-btn").addEventListener("click", () => { const w = $("#adm-set"); w.hidden = !w.hidden; if (!w.hidden) { renderSet(); w.scrollIntoView({ behavior: "smooth", block: "start" }); } });

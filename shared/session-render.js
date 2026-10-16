@@ -22,6 +22,37 @@
   const judul = (t) => { t = String(t || "").trim(); if (t && t === t.toUpperCase() && t.length > 6) t = t.toLowerCase().replace(/(^|[\s,(&-])([a-z])/g, (a, b, c) => b + c.toUpperCase()); return t || "Tanpa judul"; };
   const v = (o, k) => (o && typeof o[k] === "number" && isFinite(o[k]) ? o[k] : null);
   // "ℹ️ Ini apa?" di tiap bagian — pola sama dengan browie Pulse: angka harus bisa dibaca tanpa bertanya.
+  /* ---------- interaktif: tooltip (data-tip), detail yang bisa diklik (data-det), badge ▲▼ vs pembanding ---------- */
+  let CTX = { list: [], banding: "sebelum" }, DET = {}, detN = 0;
+  const det = (html) => { const id = "d" + ++detN; DET[id] = html; return `data-det="${id}"`; };
+  const fmtMet = (k, x) => { const f = (LM_MET[k] || [])[2]; if (x == null || !isFinite(x)) return "—"; return f === "rp" ? rp(x) : f === "dtk" ? Math.floor(x / 60) + " mnt " + Math.round(x % 60) + " dtk" : nf(Math.round(x * 10) / 10); };
+  const labelBanding = (m) => (LM_BANDING.find((b) => b[0] === m) || LM_BANDING[0])[1];
+  // Isi jendela detail satu metrik untuk satu sesi: nilai, pembanding, dan 10 sesi terakhir (bisa diklik).
+  function detMetrik(s, k) {
+    const [label] = LM_MET[k] || [k], ini = lmNilai(s, k), p = lmPembanding(CTX.list, s, k, CTX.banding);
+    const idx = CTX.list.findIndex((x) => x.id === s.id);
+    const deret = CTX.list.slice(idx, idx + 10).filter((x) => lmNilai(x, k) != null).reverse();
+    const mx = Math.max(...deret.map((x) => lmNilai(x, k)), 1);
+    const batang = deret.map((x) => `<button class="sp-col${x.id === s.id ? " on" : ""}" data-lm-sel="${esc(x.id)}" data-tip="${esc(dPend(x.date) + (x.start ? " " + x.start : "") + ": " + fmtMet(k, lmNilai(x, k)))}"><i style="height:${Math.max((lmNilai(x, k) / mx) * 100, 3)}%"></i><span>${dPend(x.date)}</span></button>`).join("");
+    return `<h3>${esc(label)}</h3><p class="det-big">${fmtMet(k, ini)} ${p ? badgeHtml(p.persen, false) : ""}</p>
+      <p class="msg">${dPanj(s.date)}${s.start ? " · " + esc(s.start) : ""}</p>
+      ${p ? `<div class="det-box"><b>Pembanding: ${esc(labelBanding(CTX.banding))}</b> = ${fmtMet(k, p.nilai)}${p.n > 1 ? ` <span class="msg">(dari ${p.n} sesi)</span>` : ""}
+        <div class="det-ref">${p.ref.slice(0, 7).map((x) => `<button class="chip" data-lm-sel="${esc(x.id)}">${dPend(x.date)}${x.start ? " " + esc(x.start) : ""} · ${fmtMet(k, lmNilai(x, k))}</button>`).join("")}</div></div>`
+        : `<div class="det-box msg">Belum ada sesi pembanding yang punya angka ini (${esc(labelBanding(CTX.banding).toLowerCase())}).</div>`}
+      ${deret.length > 1 ? `<h4>${deret.length} sesi terakhir</h4><div class="sp">${batang}</div><p class="msg">Ketuk batang untuk membuka sesinya.</p>` : ""}`;
+  }
+  function badgeHtml(persen, kecil) {
+    if (persen == null || !isFinite(persen)) return "";
+    const d = Math.round(persen);
+    const kl = Math.abs(persen) < 1 ? "n" : persen > 0 ? "up" : "dn";
+    return `<span class="dlb ${kl}${kecil ? " sm" : ""}">${kl === "n" ? "≈ sama" : (d > 0 ? "▲ " : "▼ ") + nf(Math.abs(d)) + "%"}</span>`;
+  }
+  // Angka yang bisa diklik + badge persen vs pembanding (dipakai di halaman Per Sesi).
+  function angka(s, k, teks) {
+    const p = lmPembanding(CTX.list, s, k, CTX.banding);
+    const tip = p ? `vs ${labelBanding(CTX.banding).toLowerCase()}: ${fmtMet(k, p.nilai)}` : "Belum ada pembanding";
+    return `<button class="lm-num" ${det(detMetrik(s, k))} data-tip="${esc((LM_MET[k] || [k])[0] + " · " + tip + " · ketuk untuk detail")}">${teks != null ? teks : fmtMet(k, lmNilai(s, k))}${p ? badgeHtml(p.persen, true) : ""}</button>`;
+  }
   const info = (isi) => `<details class="lm-info"><summary>ℹ️ Ini apa?</summary><p>${isi}</p></details>`;
   const INFO = {
     hero: "Jumlah semua orang yang menonton sesi live ini di Instagram dan Shopee, dipecah menurut asalnya. <b>Instagram</b> = Viewers di Insights IG. <b>Shopee dari luar</b> = penonton Shopee yang datang dari luar aplikasi Shopee (link dari IG, WhatsApp, dll — di Shopee tertulis \"Lainnya\"). <b>Shopee dari dalam</b> = penonton yang menemukan live dari Beranda, Rekomendasi, atau Video Shopee. Makin besar bagian Instagram + Shopee dari luar, makin besar peran mirroring.",
@@ -61,11 +92,11 @@
       else seg.push(["unk", "Shopee (asal belum diisi)", a.shopee]);
     }
     const tot = a.total || 0;
-    const bar = seg.map(([c, l, n]) => `<i class="seg-${c}" style="flex:${Math.max(n, 0)} 0 0" title="${esc(l)}: ${nf(n)}"></i>`).join("");
+    const bar = seg.map(([c, l, n]) => `<i class="seg-${c}" style="flex:${Math.max(n, 0)} 0 0" data-tip="${esc(l)}: ${nf(n)} (${pc(n, tot)} dari total)"></i>`).join("");
     const leg = seg.map(([c, l, n]) => `<div class="leg"><span class="sw seg-${c}"></span><div><b>${nf(n)}</b> <small>${pc(n, tot)}</small><span>${l}</span></div></div>`).join("");
     const k = lmKlikSesi(s, klik);
     return `<div class="lm-hero">
-      <div class="lm-hero-top"><div><div class="lm-k">Total penonton</div><div class="lm-big">${nf(a.total)}</div></div>
+      <div class="lm-hero-top"><div><div class="lm-k">Total penonton</div><div class="lm-big">${angka(s, "total")}</div></div>
         <div class="lm-hero-meta"><div class="lm-when">${dPanj(s.date)}${s.start ? " · " + esc(s.start) : ""}</div><div class="msg">${esc(judul(s.title || (s.ig && s.ig.title)))}</div><div class="lm-pills">${pills(s)}</div></div></div>
       ${tot ? `<div class="lm-stack" role="img" aria-label="Pembagian penonton per asal">${bar}</div>` : ""}
       <div class="lm-legend">${leg || '<span class="msg">Belum ada angka penonton.</span>'}</div>
@@ -75,25 +106,26 @@
 
   /* ---------- 2. IG vs Shopee berdampingan ---------- */
   function vsHtml(s) {
-    const pair = [["Penonton", v(s.ig, "viewers"), v(s.sh, "penonton")], ["Puncak penonton", v(s.ig, "puncak"), v(s.sh, "puncak")],
-      ["Komentar", v(s.ig, "komen"), v(s.sh, "komen")], ["Dibagikan", v(s.ig, "share"), v(s.sh, "bagi")]];
-    const rows = pair.map(([l, a, b]) => {
-      const mx = Math.max(a || 0, b || 0, 1);
-      return `<div class="bf"><div class="bf-l"><b>${nf(a)}</b><span class="bf-bar"><i class="seg-ig" style="width:${((a || 0) / mx) * 100}%"></i></span></div>
-        <div class="bf-k">${l}</div><div class="bf-r"><span class="bf-bar"><i class="seg-dalam" style="width:${((b || 0) / mx) * 100}%"></i></span><b>${nf(b)}</b></div></div>`;
+    const pair = [["Penonton", v(s.ig, "viewers"), v(s.sh, "penonton"), "ig", "penonton"], ["Puncak penonton", v(s.ig, "puncak"), v(s.sh, "puncak"), "ig_puncak", "puncak"],
+      ["Komentar", v(s.ig, "komen"), v(s.sh, "komen"), "ig_komen", "komen"], ["Dibagikan", v(s.ig, "share"), v(s.sh, "bagi"), "ig_share", "bagi"]];
+    const rows = pair.map(([l, a, b, ka, kb]) => {
+      const mx = Math.max(a || 0, b || 0, 1), tipA = `Instagram · ${l}: ${nf(a)}`, tipB = `Shopee · ${l}: ${nf(b)}${a != null && b != null && a + b ? " · " + pc(b, a + b) + " dari gabungan" : ""}`;
+      return `<div class="bf"><div class="bf-l"><b>${a == null ? "—" : angka(s, ka)}</b><span class="bf-bar" data-tip="${esc(tipA)}"><i class="seg-ig" style="width:${((a || 0) / mx) * 100}%"></i></span></div>
+        <div class="bf-k">${l}</div><div class="bf-r"><span class="bf-bar" data-tip="${esc(tipB)}"><i class="seg-dalam" style="width:${((b || 0) / mx) * 100}%"></i></span><b>${b == null ? "—" : angka(s, kb)}</b></div></div>`;
     }).join("");
-    const fact = (l, val) => `<div><span>${l}</span><b>${val}</b></div>`;
+    const fact = (l, val, k) => `<div><span>${l}</span><b>${k && lmNilai(s, k) != null ? angka(s, k) : val}</b></div>`;
     return `<div class="panel"><h2>Instagram vs Shopee</h2>${info(INFO.vs)}
       <div class="bf-head"><span class="ig-t">📸 Instagram${s.ig ? " · " + dur(v(s.ig, "dur")) : ""}</span><span></span><span class="sh-t">🛒 Shopee${s.sh ? " · " + dur(v(s.sh, "dur")) : ""}</span></div>
       ${rows}
-      <div class="lm-facts">${fact("Akun berinteraksi IG", nf(v(s.ig, "engaged")))}${fact("Ditonton Shopee", nf(v(s.sh, "ditonton")))}${fact("Rata-rata nonton Shopee", v(s.sh, "avg") == null ? "—" : Math.floor(v(s.sh, "avg") / 60) + " mnt " + (v(s.sh, "avg") % 60) + " dtk")}${fact("Penjualan Shopee", rp(v(s.sh, "jual")))}${fact("Follow baru Shopee", nf(v(s.sh, "follow")))}${fact("Suka Shopee", nf(v(s.sh, "suka")))}</div>
+      <div class="lm-facts">${fact("Akun berinteraksi IG", "—", "ig_engaged")}${fact("Ditonton Shopee", "—", "ditonton")}${fact("Rata-rata nonton Shopee", "—", "avg")}${fact("Penjualan Shopee", "—", "jual")}${fact("Follow baru Shopee", "—", "follow")}${fact("Suka Shopee", "—", "suka")}</div>
       ${!s.ig ? '<p class="note">Data Instagram sesi ini belum diunggah.</p>' : ""}${!s.sh ? '<p class="note">Data Shopee sesi ini belum ada.</p>' : ""}</div>`;
   }
 
   /* ---------- 3. corong ---------- */
-  function step(label, n, base, sub, cls) {
+  function step(label, n, base, sub, cls, s, k) {
     const w = n == null || !base ? 0 : Math.max((n / base) * 100, 1.5);
-    return `<div class="fs"><div class="fs-l">${label}${sub ? `<small>${sub}</small>` : ""}</div><div class="fs-bar"><i class="${cls}" style="width:${w}%"></i></div><b>${nf(n)}</b></div>`;
+    const tip = `${label}: ${nf(n)}${sub ? " · " + String(sub).replace(/<[^>]+>/g, "") : ""}`;
+    return `<div class="fs"><div class="fs-l">${label}${sub ? `<small>${sub}</small>` : ""}</div><div class="fs-bar" data-tip="${esc(tip)}"><i class="${cls}" style="width:${w}%"></i></div><b>${s && k && n != null ? angka(s, k) : nf(n)}</b></div>`;
   }
   function corongHtml(s, klik) {
     const a = lmAsal(s), k = lmKlikSesi(s, klik);
@@ -101,16 +133,16 @@
     const baseA = Math.max(ig || 0, k || 0, a.luar || 0, 1);
     return `<div class="panel"><h2>Corong</h2>${info(INFO.corong)}
       <div class="fgrp"><h3>Dari Instagram ke Shopee</h3>
-        ${step("Penonton IG", ig, baseA, "", "seg-ig")}
+        ${step("Penonton IG", ig, baseA, "", "seg-ig", s, "ig")}
         ${step("Klik link ke Shopee", k, baseA, k == null ? "link penghitung belum aktif / jam sesi belum ada" : pc(k, ig) + " dari penonton IG", "seg-ig")}
-        ${step("Penonton Shopee dari luar", a.luar, baseA, a.luar == null ? "asal penonton belum diisi" : "termasuk dari IG", "seg-luar")}
+        ${step("Penonton Shopee dari luar", a.luar, baseA, a.luar == null ? "asal penonton belum diisi" : "termasuk dari IG", "seg-luar", s, "luar")}
       </div>
       <div class="fgrp"><h3>Di Shopee <small>semua penonton, bukan hanya dari IG</small></h3>
-        ${step("Penonton Shopee", pn, pn || 1, "", "seg-dalam")}
-        ${step("Klik produk", kl, pn || 1, pc(kl, pn) + " dari penonton", "seg-dalam")}
-        ${step("Masuk keranjang", atc, pn || 1, kl ? pc(atc, kl) + " dari klik produk" : "", "seg-dalam")}
-        ${step("Pesanan (co)", ps, pn || 1, atc ? pc(ps, atc) + " dari keranjang" : "", "seg-dalam")}
-        <div class="fs fs-side"><div class="fs-l">Follow baru toko<small>${fo != null && pn ? nf((fo / pn) * 100) + " per 100 penonton" : ""}</small></div><div></div><b>${nf(fo)}</b></div>
+        ${step("Penonton Shopee", pn, pn || 1, "", "seg-dalam", s, "penonton")}
+        ${step("Klik produk", kl, pn || 1, pc(kl, pn) + " dari penonton", "seg-dalam", s, "klik")}
+        ${step("Masuk keranjang", atc, pn || 1, kl ? pc(atc, kl) + " dari klik produk" : "", "seg-dalam", s, "atc")}
+        ${step("Pesanan (co)", ps, pn || 1, atc ? pc(ps, atc) + " dari keranjang" : "", "seg-dalam", s, "pesanan")}
+        <div class="fs fs-side"><div class="fs-l">Follow baru toko<small>${fo != null && pn ? nf((fo / pn) * 100) + " per 100 penonton" : ""}</small></div><div></div><b>${fo != null ? angka(s, "follow") : "—"}</b></div>
       </div></div>`;
   }
 
@@ -140,7 +172,7 @@
     if (!src || !Object.keys(src).length) return `<div class="panel"><h2>Asal penonton Shopee</h2>${info(INFO.asal)}<p class="msg">Belum diisi. Ada di dashboard live Shopee → Sumber Menonton Livestream.</p></div>`;
     const mx = Math.max(...LM_SUMBER.map((k) => v(src, k) || 0), 1);
     return `<div class="panel"><h2>Asal penonton Shopee</h2>${info(INFO.asal)}${LM_SUMBER.filter((k) => v(src, k) != null).map((k) =>
-      `<div class="src-r"><span>${k}${k === "Lainnya" ? ' <small class="pill ig">termasuk IG</small>' : ""}</span><span class="fs-bar"><i class="${k === "Lainnya" ? "seg-luar" : "seg-dalam"}" style="width:${(src[k] / mx) * 100}%"></i></span><b>${nf(src[k])}%</b></div>`).join("")}</div>`;
+      `<div class="src-r" data-tip="${esc(k + ": " + nf(src[k]) + "% penonton Shopee" + (v(s.sh, "penonton") != null ? " ≈ " + nf(Math.round((src[k] / 100) * v(s.sh, "penonton"))) + " orang" : ""))}"><span>${k}${k === "Lainnya" ? ' <small class="pill ig">termasuk IG</small>' : ""}</span><span class="fs-bar"><i class="${k === "Lainnya" ? "seg-luar" : "seg-dalam"}" style="width:${(src[k] / mx) * 100}%"></i></span><b>${nf(src[k])}%</b></div>`).join("")}</div>`;
   }
 
   /* ---------- rangkuman performa sesi ---------- */
@@ -275,9 +307,17 @@
     const ticks = lmTicks(Math.max(0, ...hari.map(tot)), 4), top = ticks[ticks.length - 1] || 1;
     const n = hari.length, tiap = n <= 16 ? 1 : Math.ceil(n / 12), nilai = n <= 14;
     const garis = ticks.map((t) => `<div class="ch-line" style="bottom:${(t / top) * 100}%"><span>${o.y(t)}</span></div>`).join("");
+    let sebelum = null;
     const kol = hari.map((d) => {
       const p = d.date.split("-").map(Number), nm = HARI3[new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay()] + " " + p[2] + " " + BULAN[p[1] - 1];
-      const tip = nm + (d.nSesi ? " · " + d.nSesi + " sesi · " + seri.map((x) => x.label + " " + o.f(d[x.k] || 0)).join(" · ") : " · tidak ada live");
+      const pv = sebelum, persen = d.nSesi && pv && tot(pv) ? ((tot(d) - tot(pv)) / tot(pv)) * 100 : null;
+      if (d.nSesi) sebelum = d;
+      const vsTeks = persen == null ? "" : ` · ${persen >= 0 ? "▲" : "▼"} ${nf(Math.abs(Math.round(persen)))}% vs hari live sebelumnya`;
+      const tip = nm + (d.nSesi ? " · " + d.nSesi + " sesi · " + seri.map((x) => x.label + " " + o.f(d[x.k] || 0)).join(" · ") + vsTeks : " · tidak ada live");
+      const sesiHari = CTX.list.filter((x) => x.date === d.date);
+      const detIsi = `<h3>${nm}</h3>${d.nSesi ? `<p class="det-big">${o.f(tot(d))} ${badgeHtml(persen, false)}</p><p class="msg">${esc(o.judul)}${pv ? " · dibanding " + dPend(pv.date) + " (" + o.f(tot(pv)) + ")" : ""}</p>
+        <div class="det-box">${seri.map((x) => `<div class="det-row"><span><i class="sw ${x.cls}"></i> ${x.label}</span><b>${o.f(d[x.k] || 0)}</b>${pv ? badgeHtml(pv[x.k] ? (((d[x.k] || 0) - pv[x.k]) / pv[x.k]) * 100 : null, true) : ""}</div>`).join("")}</div>
+        ${sesiHari.length ? `<h4>Sesi di hari ini</h4><div class="det-ref">${sesiHari.map((x) => `<button class="chip" data-lm-sel="${esc(x.id)}">${x.start ? esc(x.start) + " · " : ""}${esc(judul(x.title || (x.ig && x.ig.title)).slice(0, 32))}</button>`).join("")}</div>` : ""}` : '<p class="msg">Tidak ada live di hari ini.</p>'}`;
       let isi;
       if (o.tumpuk) {
         const h = (tot(d) / top) * 100;
@@ -285,12 +325,12 @@
       } else {
         isi = `<div class="ch-grup">${seri.map((x) => { const h = ((d[x.k] || 0) / top) * 100; return `<i class="${x.cls}" style="height:${h}%">${nilai && d[x.k] ? `<em>${o.f(d[x.k])}</em>` : ""}</i>`; }).join("")}</div>`;
       }
-      return `<div class="ch-col${d.nSesi ? "" : " kosong"}" tabindex="0" data-tip="${esc(tip)}" title="${esc(tip)}">${isi}</div>`;
+      return `<div class="ch-col${d.nSesi ? "" : " kosong"}" tabindex="0" role="button" data-tip="${esc(tip)}" ${det(detIsi)}>${isi}</div>`;
     }).join("");
     const xl = hari.map((d, i) => { const p = d.date.split("-").map(Number); return `<span>${i % tiap === 0 ? p[2] + "<small>" + HARI3[new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay()] + "</small>" : ""}</span>`; }).join("");
     const adaData = hari.some((d) => tot(d) > 0);
     return `<div class="ch"><div class="ch-judul"><h3>${o.judul}</h3><span class="ch-leg">${seri.map((x) => `<span><i class="${x.cls}"></i>${x.label}</span>`).join("")}</span></div>
-      ${adaData ? `<div class="ch-plot"><div class="ch-garis">${garis}</div><div class="ch-cols">${kol}</div></div><div class="ch-x">${xl}</div><p class="ch-info" data-ch-info>Ketuk atau arahkan kursor ke batang untuk melihat angkanya.</p>` : '<p class="msg" style="margin:10px 0 0">Tidak ada angka di rentang ini.</p>'}</div>`;
+      ${adaData ? `<div class="ch-plot"><div class="ch-garis">${garis}</div><div class="ch-cols">${kol}</div></div><div class="ch-x">${xl}</div><p class="ch-info" data-ch-info>Arahkan kursor ke batang untuk angkanya; ketuk batang untuk rincian hari itu.</p>` : '<p class="msg" style="margin:10px 0 0">Tidak ada angka di rentang ini.</p>'}</div>`;
   }
 
   /* ---------- 📋 report periode ---------- */
@@ -303,7 +343,13 @@
   function reportHtml(list, data, st) {
     const { dari, sampai } = st.rentang, bd = lmBandingRange(dari, sampai), ini = hariIni(), berjalan = ini >= dari && ini <= sampai;
     const A = lmRekap(list, dari, sampai, data.klik), B = lmRekap(list, bd.dari, bd.sampai, data.klik);
-    const kartu = (l, a, b, fmt, ket) => `<div class="rp-k"><div class="lm-k">${l}</div><div class="rp-v">${fmt(a)}</div><div class="rp-d">${delta(a, b)} <span>vs ${fmt(b)}</span></div>${ket ? `<div class="rp-ket">${ket}</div>` : ""}</div>`;
+    const sesiA = dalamRentang(list, { dari, sampai });
+    const kartu = (l, a, b, fmt, ket, k) => {
+      const baris = k ? sesiA.filter((x) => lmNilai(x, k) != null).sort((x, y) => lmNilai(y, k) - lmNilai(x, k)) : [];
+      const isi = `<h3>${esc(l)}</h3><p class="det-big">${fmt(a)} ${delta(a, b)}</p><p class="msg">${lmLabelRentang(dari, sampai)} · pembanding ${esc(bd.nama)} (${lmLabelRentang(bd.dari, bd.sampai)}) = ${fmt(b)}</p>
+        ${baris.length ? `<h4>Per sesi (terbesar dulu)</h4><div class="det-tab">${baris.slice(0, 10).map((x) => `<button data-lm-sel="${esc(x.id)}"><span>${dPend(x.date)}${x.start ? " " + esc(x.start) : ""}</span><span class="msg">${esc(judul(x.title || (x.ig && x.ig.title)).slice(0, 28))}</span><b>${fmtMet(k, lmNilai(x, k))}</b></button>`).join("")}</div>${baris.length > 10 ? `<p class="msg">+${baris.length - 10} sesi lain.</p>` : ""}` : ""}`;
+      return `<button class="rp-k" ${det(isi)} data-tip="${esc(l + ": " + fmt(a) + " · vs " + fmt(b) + " · ketuk untuk rincian per sesi")}"><div class="lm-k">${l}</div><div class="rp-v">${fmt(a)}</div><div class="rp-d">${delta(a, b)} <span>vs ${fmt(b)}</span></div>${ket ? `<div class="rp-ket">${ket}</div>` : ""}</button>`;
+    };
     const ada = (n, k) => (n ? k : null);
     const terbaik = A.terbaik.map((id) => list.find((x) => x.id === id)).filter(Boolean);
     const panjang = lmSelisihHari(dari, sampai) + 1;
@@ -319,11 +365,11 @@
     return `<div class="panel lm-report"><div class="rk-head"><h2>📋 Report</h2><span class="msg">${lmLabelRentang(dari, sampai)}${berjalan ? " ⏳" : ""}</span></div>${info(INFO.report)}
       ${A.sesi ? `<div class="rp-grid">
         ${kartu("Sesi live", A.sesi, B.sesi, nf)}
-        ${kartu("Total penonton", A.penonton, B.penonton, nf, `IG ${nf(A.ig)} · Shopee ${nf(A.shopee)}`)}
+        ${kartu("Total penonton", A.penonton, B.penonton, nf, `IG ${nf(A.ig)} · Shopee ${nf(A.shopee)}`, "total")}
         ${kartu("Klik link IG → Shopee", ada(A.nKlik, A.klik), ada(B.nKlik, B.klik), nf, A.nKlik ? "" : "link penghitung belum aktif")}
-        ${kartu("Pesanan", A.pesanan, B.pesanan, nf)}
-        ${kartu("Penjualan", ada(A.nJual, A.jual), ada(B.nJual, B.jual), rpk)}
-        ${kartu("Follow baru Shopee", ada(A.nFollow, A.follow), ada(B.nFollow, B.follow), nf, A.nFollow < A.sesi ? `dari ${A.nFollow} sesi yang diisi` : "")}
+        ${kartu("Pesanan", A.pesanan, B.pesanan, nf, "", "pesanan")}
+        ${kartu("Penjualan", ada(A.nJual, A.jual), ada(B.nJual, B.jual), rpk, "", "jual")}
+        ${kartu("Follow baru Shopee", ada(A.nFollow, A.follow), ada(B.nFollow, B.follow), nf, A.nFollow < A.sesi ? `dari ${A.nFollow} sesi yang diisi` : "", "follow")}
       </div>
       <p class="rp-ringkas">${A.nAsal ? `<b>${pc(A.luar, A.luar + A.dalam)}</b> penonton Shopee datang dari luar Shopee (termasuk IG). ` : ""}${A.ig ? `Penonton Instagram <b>${nf(A.ig)}</b> dari ${nf(A.nIg)} sesi. ` : ""}Perbandingan (▲▼ dan angka setelah "vs") dengan <b>${bd.nama}</b> (${lmLabelRentang(bd.dari, bd.sampai)})${berjalan ? ". <b>Periode ini belum selesai</b>, jadi angkanya wajar lebih kecil" : ""}.</p>
       ${grafik}
@@ -341,7 +387,7 @@
     const chips = METRIK.map(([k, l]) => `<button class="chip" data-lm-metrik="${k}" aria-pressed="${st.metrik === k}">${l}</button>`).join("");
     if (!total) return `<div class="panel"><h2>🕐 Jam & hari tayang terbaik</h2>${info(INFO.jam)}<p class="msg">Belum ada sesi Shopee dengan jam mulai dan angka ini. Isi jam mulai di tiap sesi.</p></div>`;
     const head = `<tr><th></th>${HARI_S.map((h) => `<th>${h}</th>`).join("")}</tr>`;
-    const rows = r.grid.map((row, bi) => `<tr><th class="jm-b">${LM_BLOK[bi][0]}<small>${String(LM_BLOK[bi][1] % 24).padStart(2, "0")}–${String(LM_BLOK[bi][2] % 24).padStart(2, "0")}</small></th>${row.map((c, hi) => c.n ? `<td class="jm-c${r.best && r.best.bi === bi && r.best.hi === hi ? " best" : ""}${(c.rata || 0) / mx >= 0.55 ? " pekat" : ""}" style="--t:${Math.round(((c.rata || 0) / mx) * 100)}%" title="${HARI_S[hi]} ${LM_BLOK[bi][0].toLowerCase()}: rata-rata ${fm(c.rata)} dari ${c.n} sesi"><b>${fm(c.rata)}</b><small>${c.n} sesi</small></td>` : '<td class="jm-c kosong">·</td>').join("")}</tr>`).join("");
+    const rows = r.grid.map((row, bi) => `<tr><th class="jm-b">${LM_BLOK[bi][0]}<small>${String(LM_BLOK[bi][1] % 24).padStart(2, "0")}–${String(LM_BLOK[bi][2] % 24).padStart(2, "0")}</small></th>${row.map((c, hi) => c.n ? `<td class="jm-c${r.best && r.best.bi === bi && r.best.hi === hi ? " best" : ""}${(c.rata || 0) / mx >= 0.55 ? " pekat" : ""}" style="--t:${Math.round(((c.rata || 0) / mx) * 100)}%" data-tip="${HARI_S[hi]} ${LM_BLOK[bi][0].toLowerCase()}: rata-rata ${fm(c.rata)} dari ${c.n} sesi"><b>${fm(c.rata)}</b><small>${c.n} sesi</small></td>` : '<td class="jm-c kosong">·</td>').join("")}</tr>`).join("");
     const b = r.best;
     return `<div class="panel"><div class="rk-head"><h2>🕐 Jam & hari tayang terbaik</h2><span class="row">${chips}</span></div>${info(INFO.jam)}
       <p class="rp-ringkas">${b ? `Rata-rata <b>${METRIK.find((m) => m[0] === st.metrik)[1].toLowerCase()}</b> tertinggi: <b>${HARI_S[b.hi]} ${LM_BLOK[b.bi][0].toLowerCase()}</b> (${fm(b.rata)} per sesi, dari ${b.n} sesi).` : "Belum ada kombinasi hari + jam dengan minimal 2 sesi, jadi belum bisa dipilih yang terbaik."} Berdasarkan ${total} sesi.</p>
@@ -360,7 +406,9 @@
       if (a.ig) parts.push(["ig", a.ig]);
       if (a.shopee != null) { if (a.luar != null) { parts.push(["luar", a.luar]); parts.push(["dalam", a.dalam]); } else parts.push(["unk", a.shopee]); }
       const tip = `${dPend(s.date)}${s.start ? " " + s.start : ""}: total ${nf(a.total)} · IG ${nf(a.ig)} · Shopee ${nf(a.shopee)}${a.luar != null ? " (luar " + nf(a.luar) + ")" : ""} · pesanan ${nf(v(s.sh, "pesanan"))}`;
-      return `<button class="tc${s.id === selId ? " on" : ""}" data-lm-sel="${esc(s.id)}" title="${esc(tip)}" aria-label="${esc(tip)}">
+      const i0 = CTX.list.findIndex((x) => x.id === s.id), pv = CTX.list.slice(i0 + 1).find((x) => lmAsal(x).total != null), pr = pv && lmAsal(pv).total ? ((a.total - lmAsal(pv).total) / lmAsal(pv).total) * 100 : null;
+      const tip2 = tip + (pr != null ? ` · ${pr >= 0 ? "▲" : "▼"} ${nf(Math.abs(Math.round(pr)))}% vs sesi sebelumnya` : "") + " · ketuk untuk buka";
+      return `<button class="tc${s.id === selId ? " on" : ""}" data-lm-sel="${esc(s.id)}" data-tip="${esc(tip2)}" aria-label="${esc(tip)}">
         <span class="tc-v">${nf(a.total)}</span><span class="tc-bar" style="height:${((a.total || 0) / mx) * 100}%">${parts.map(([c, n]) => `<i class="seg-${c}" style="flex:${n} 0 0"></i>`).join("")}</span>
         <span class="tc-x">${dPend(s.date)}<br>${esc(s.start || "—")}</span></button>`;
     }).join("");
@@ -458,9 +506,10 @@
   function lmMount(root, data, opts) {
     opts = opts || {};
     const presetAwal = (() => { try { const k = localStorage.getItem("lm-rentang"); return PRESET.some((p) => p[0] === k) ? k : "7"; } catch (e) { return "7"; } })();
-    let st = { sel: null, page: 1, konfirm: null, metrik: "penonton", rentang: { ...lmPreset(presetAwal, hariIni()), preset: presetAwal }, pickBuka: false, pickTab: "hari", calBulan: hariIni().slice(0, 7), thn: Number(hariIni().slice(0, 4)), anchor: null, tab: (() => { try { return localStorage.getItem("lm-tab-dash") || "ringkasan"; } catch (e) { return "ringkasan"; } })() };
+    let st = { sel: null, page: 1, konfirm: null, metrik: "penonton", rentang: { ...lmPreset(presetAwal, hariIni()), preset: presetAwal }, pickBuka: false, pickTab: "hari", banding: (() => { try { const b = localStorage.getItem("lm-banding"); return LM_BANDING.some((x) => x[0] === b) ? b : "sebelum"; } catch (e) { return "sebelum"; } })(), calBulan: hariIni().slice(0, 7), thn: Number(hariIni().slice(0, 4)), anchor: null, tab: (() => { try { return localStorage.getItem("lm-tab-dash") || "ringkasan"; } catch (e) { return "ringkasan"; } })() };
     function render() {
       const list = lmGabung(data.sh, data.ig);
+      DET = {}; detN = 0; CTX = { list, banding: st.banding };
       const tabs = [...TAB_DASAR, ...(opts.onAksi ? [["admin", "🛠 Admin"]] : [])];
       if (!tabs.some((t) => t[0] === st.tab)) st.tab = "ringkasan";
       const nav = `<nav class="lm-nav" role="tablist" aria-label="Halaman dashboard">${tabs.map(([k, l]) => `<button role="tab" class="lm-tab${st.tab === k ? " on" : ""}" aria-selected="${st.tab === k}" data-lm-tab="${k}">${l}</button>`).join("")}</nav><p class="lm-tabnote">${CATATAN_TAB[st.tab]}</p>`;
@@ -479,6 +528,7 @@
         isi = `<div class="lm-picker"><button data-lm-step="1" ${i >= list.length - 1 ? "disabled" : ""} aria-label="Sesi sebelumnya">◀</button>
           <select data-lm-pick aria-label="Pilih sesi">${opt}</select><button data-lm-step="-1" ${i <= 0 ? "disabled" : ""} aria-label="Sesi berikutnya">▶</button>
           <span class="msg">Sesi ${list.length - i} dari ${list.length}</span></div>
+        <div class="lm-banding"><label for="lm-banding">Badge ▲▼ dibanding</label><select id="lm-banding" data-lm-banding>${LM_BANDING.map(([k, l]) => `<option value="${k}" ${k === CTX.banding ? "selected" : ""}>${l}</option>`).join("")}</select><span class="msg">Arahkan kursor ke angka/batang untuk detail cepat, ketuk angka untuk rincian.</span></div>
         ${opts.onAksi ? adminHtml(s, st.konfirm) : ""}${pairHtml(s, data, opts.onPair)}${heroHtml(s, data.klik)}
         ${rangkumHtml(s, list)}
         ${aksiHtml(s, list, data, opts)}
@@ -519,7 +569,6 @@
       }
       const mg = t.closest("[data-lm-mg]"); if (mg) { const dr = mg.dataset.lmMg; terapkan(dr, lmTglTambah(dr, 6), null); return; }
       const bl = t.closest("[data-lm-bln]"); if (bl) { const awal = bl.dataset.lmBln + "-01"; terapkan(awal, lmAkhirBulan(awal), null); return; }
-      const chc = t.closest(".ch-col"); if (chc) { const info = chc.closest(".ch").querySelector("[data-ch-info]"); if (info) info.textContent = chc.dataset.tip; return; }
       const mt = t.closest("[data-lm-metrik]"); if (mt) { st.metrik = mt.dataset.lmMetrik; render(); return; }
       const rk = t.closest("[data-lm-rek]");
       if (rk && opts.onRekomendasi) { const list = lmGabung(data.sh, data.ig), s = list.find((x) => x.id === st.sel); if (s) opts.onRekomendasi(rk.dataset.lmRek, s.id, lmFakta(s, list, (data.jev || {})[s.id]).fakta, root.querySelector("#rek-msg"), rk); return; }
@@ -527,9 +576,38 @@
       if (km && opts.onKomentar) { const ta = root.querySelector("#kom-teks"), msg = root.querySelector("#kom-msg"); opts.onKomentar(km.dataset.lmKom, st.sel, ta ? ta.value : "", msg, km); return; }
       const pr = t.closest("[data-lm-pair]"); if (pr && opts.onPair) { const s = root.querySelector(`[data-lm-pairsel="${CSS.escape(pr.dataset.lmPair)}"]`); if (s) opts.onPair(pr.dataset.lmPair, s.value); }
     });
-    root.addEventListener("mouseover", (e) => { const c = e.target.closest && e.target.closest(".ch-col"); if (c) { const info = c.closest(".ch").querySelector("[data-ch-info]"); if (info) info.textContent = c.dataset.tip; } });
     root.addEventListener("keydown", (e) => { if (e.key === "Escape" && st.pickBuka) { st.pickBuka = false; st.anchor = null; render(); } });
-    root.addEventListener("change", (e) => { if (e.target.matches("[data-lm-pick]")) { st.sel = e.target.value; render(); } });
+    root.addEventListener("change", (e) => {
+      if (e.target.matches("[data-lm-pick]")) { st.sel = e.target.value; render(); }
+      if (e.target.matches("[data-lm-banding]")) { st.banding = e.target.value; try { localStorage.setItem("lm-banding", st.banding); } catch (er) {} render(); }
+    });
+    /* tooltip melayang + jendela detail (di luar root supaya tidak ikut digambar ulang) */
+    const doc = root.ownerDocument;
+    const tip = doc.createElement("div"); tip.className = "lm-tip"; tip.hidden = true; tip.setAttribute("role", "tooltip"); doc.body.appendChild(tip);
+    const letak = (x, y) => { const w = tip.offsetWidth, h = tip.offsetHeight, W = doc.documentElement.clientWidth; let l = x + 14, t = y + 16; if (l + w > W - 8) l = Math.max(8, x - w - 10); if (t + h > window.innerHeight - 8) t = Math.max(8, y - h - 12); tip.style.left = l + "px"; tip.style.top = t + "px"; };
+    const tunjuk = (el, x, y) => { tip.textContent = el.dataset.tip; tip.hidden = false; letak(x, y); };
+    root.addEventListener("mouseover", (e) => { const el = e.target.closest && e.target.closest("[data-tip]"); if (el && root.contains(el)) { const r = el.getBoundingClientRect(); tunjuk(el, e.clientX || r.right, e.clientY || r.bottom); } });
+    root.addEventListener("mousemove", (e) => { if (!tip.hidden) letak(e.clientX, e.clientY); });
+    root.addEventListener("mouseout", (e) => { const el = e.target.closest && e.target.closest("[data-tip]"); if (el && !el.contains(e.relatedTarget)) tip.hidden = true; });
+    root.addEventListener("focusin", (e) => { const el = e.target.closest && e.target.closest("[data-tip]"); if (el) { const r = el.getBoundingClientRect(); tunjuk(el, r.left, r.bottom); } });
+    root.addEventListener("focusout", () => { tip.hidden = true; });
+    const bg = doc.createElement("div"); bg.className = "lm-det-bg"; bg.hidden = true;
+    bg.innerHTML = '<div class="lm-det" role="dialog" aria-modal="true" aria-label="Rincian"><button class="lm-det-x" aria-label="Tutup">×</button><div class="lm-det-isi"></div></div>';
+    doc.body.appendChild(bg);
+    const tutup = () => { bg.hidden = true; };
+    bg.addEventListener("click", (e) => {
+      if (e.target === bg || e.target.closest(".lm-det-x")) { tutup(); return; }
+      const sl = e.target.closest("[data-lm-sel]"); if (sl) { tutup(); st.sel = sl.dataset.lmSel; keTab("sesi"); }
+    });
+    bg.addEventListener("mouseover", (e) => { const el = e.target.closest && e.target.closest("[data-tip]"); if (el) { const r = el.getBoundingClientRect(); tunjuk(el, e.clientX || r.right, e.clientY || r.bottom); } });
+    bg.addEventListener("mouseout", () => { tip.hidden = true; });
+    doc.addEventListener("keydown", (e) => { if (e.key === "Escape" && !bg.hidden) tutup(); });
+    root.addEventListener("click", (e) => {
+      const d = e.target.closest && e.target.closest("[data-det]");
+      if (!d || !DET[d.dataset.det] || (e.target.closest("[data-lm-sel]") && !d.matches(".ch-col,.rp-k,.lm-num"))) return;
+      e.stopPropagation(); tip.hidden = true;
+      bg.querySelector(".lm-det-isi").innerHTML = DET[d.dataset.det]; bg.hidden = false; bg.querySelector(".lm-det-x").focus();
+    }, true);
     render();
     if (opts.onTab) opts.onTab(st.tab);
     return { update(d) { data = d; render(); }, pilih(id) { st.sel = id; keTab("sesi"); }, setTab(k) { keTab(k); }, getTab() { return st.tab; } };

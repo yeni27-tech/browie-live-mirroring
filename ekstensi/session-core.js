@@ -389,4 +389,49 @@ function lmTicks(max, n) {
   return out;
 }
 
-if (typeof module !== "undefined") module.exports = { lmPreset, lmDaftarMinggu, lmLabelRentang, lmBandingRange, lmHarian, lmTicks, lmSenin, lmAkhirBulan, lmSelisihHari, LM_SUMBER, LM_MASALAH, LM_BLOK, lmFakta, lmBelumLengkap, lmPeriode, lmRekap, lmJamTerbaik, lmTglTambah, lmPairIg, lmGabung, lmAsal, lmKlikSesi, lmKlikTotal, lmNorm, lmSerupa, lmOffSesi, lmMirrorVs, lmKunciKlik, lmMenit, lmItems, lmProdukTerlaris, lmRangkum, lmMedian };
+
+/* ---------- pembanding per sesi (badge ▲▼ %, bisa diganti penonton dashboard) ----------
+   LM_MET: kunci metrik → [label, pengambil nilai, format "n"|"rp"|"dtk"]. list diurutkan TERBARU dulu (lmGabung). */
+const LM_MET = {
+  total: ["Total penonton", (s) => lmAsal(s).total, "n"],
+  luar: ["Penonton Shopee dari luar", (s) => lmAsal(s).luar, "n"],
+  ig: ["Penonton Instagram", (s) => (s.ig ? lmNum(s.ig.viewers) : null), "n"],
+  ig_puncak: ["Puncak penonton IG", (s) => (s.ig ? lmNum(s.ig.puncak) : null), "n"],
+  ig_komen: ["Komentar IG", (s) => (s.ig ? lmNum(s.ig.komen) : null), "n"],
+  ig_share: ["Dibagikan IG", (s) => (s.ig ? lmNum(s.ig.share) : null), "n"],
+  ig_engaged: ["Akun berinteraksi IG", (s) => (s.ig ? lmNum(s.ig.engaged) : null), "n"],
+  penonton: ["Penonton Shopee", (s) => (s.sh ? lmNum(s.sh.penonton) : null), "n"],
+  puncak: ["Puncak penonton Shopee", (s) => (s.sh ? lmNum(s.sh.puncak) : null), "n"],
+  ditonton: ["Ditonton Shopee", (s) => (s.sh ? lmNum(s.sh.ditonton) : null), "n"],
+  avg: ["Rata-rata nonton Shopee", (s) => (s.sh ? lmNum(s.sh.avg) : null), "dtk"],
+  komen: ["Komentar Shopee", (s) => (s.sh ? lmNum(s.sh.komen) : null), "n"],
+  bagi: ["Dibagikan Shopee", (s) => (s.sh ? lmNum(s.sh.bagi) : null), "n"],
+  suka: ["Suka Shopee", (s) => (s.sh ? lmNum(s.sh.suka) : null), "n"],
+  klik: ["Klik produk", (s) => (s.sh ? lmNum(s.sh.klik) : null), "n"],
+  atc: ["Masuk keranjang", (s) => (s.sh ? lmNum(s.sh.atc) : null), "n"],
+  pesanan: ["Pesanan", (s) => (s.sh ? lmNum(s.sh.pesanan) : null), "n"],
+  jual: ["Penjualan", (s) => (s.sh ? lmNum(s.sh.jual) : null), "rp"],
+  follow: ["Follow baru Shopee", (s) => (s.sh ? lmNum(s.sh.follow) : null), "n"],
+};
+function lmNilai(s, k) { const m = LM_MET[k]; return m ? m[1](s) : null; }
+const LM_BANDING = [["sebelum", "Sesi sebelumnya"], ["rata3", "Rata-rata 3 sesi sebelumnya"], ["rata7", "Rata-rata 7 sesi sebelumnya"], ["median", "Median semua sesi lain"], ["jam", "Sesi sebelumnya di jam yang sama"]];
+function lmBlokJam(s) { const m = lmMenit((s.sh && s.sh.start) || s.start); if (m == null) return -1; const j = Math.floor(m / 60) < 5 ? Math.floor(m / 60) + 24 : Math.floor(m / 60); return LM_BLOK.findIndex(([, a, b]) => j >= a && j < b); }
+// → { nilai, ref:[sesi], n, persen|null } atau null kalau tidak ada pembanding yang punya angka ini.
+function lmPembanding(list, s, k, mode) {
+  const i = list.findIndex((x) => x.id === s.id);
+  const lama = list.slice(i + 1).filter((x) => lmNilai(x, k) != null);
+  let ref;
+  if (mode === "rata3") ref = lama.slice(0, 3);
+  else if (mode === "rata7") ref = lama.slice(0, 7);
+  else if (mode === "median") ref = list.filter((x) => x.id !== s.id && lmNilai(x, k) != null);
+  else if (mode === "jam") { const b = lmBlokJam(s); ref = b < 0 ? [] : lama.filter((x) => lmBlokJam(x) === b).slice(0, 1); }
+  else ref = lama.slice(0, 1);
+  if (!ref.length) return null;
+  const vals = ref.map((x) => lmNilai(x, k));
+  const nilai = mode === "median" ? lmMedian(vals) : vals.reduce((a, b) => a + b, 0) / vals.length;
+  const ini = lmNilai(s, k);
+  const persen = ini == null || !nilai ? null : ((ini - nilai) / nilai) * 100;
+  return { nilai, ref, n: ref.length, persen };
+}
+
+if (typeof module !== "undefined") module.exports = { lmPreset, lmDaftarMinggu, lmLabelRentang, lmBandingRange, lmHarian, lmTicks, lmSenin, lmAkhirBulan, lmSelisihHari, LM_SUMBER, LM_MASALAH, LM_BLOK, lmFakta, lmBelumLengkap, lmPeriode, lmRekap, lmJamTerbaik, lmTglTambah, lmPairIg, lmGabung, lmAsal, lmKlikSesi, lmKlikTotal, lmNorm, lmSerupa, lmOffSesi, lmMirrorVs, lmKunciKlik, lmMenit, lmItems, lmProdukTerlaris, lmRangkum, lmMedian, LM_MET, lmNilai, LM_BANDING, lmBlokJam, lmPembanding };

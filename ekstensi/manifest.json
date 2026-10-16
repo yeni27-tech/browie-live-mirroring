@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "browie Live Mirroring",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Pengumpul data Shopee untuk laporan live mirroring browie: mode intip Seller Centre, pet pemantau proses, dan ringkasan dari dashboard online tim.",
   "permissions": [
     "storage",

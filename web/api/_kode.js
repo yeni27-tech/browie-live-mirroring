@@ -3,6 +3,7 @@
 //   lm:kode         hash kode → { kode, url, kampanye, mulai, selesai|null }
 //   lm:set kodeAktif         kode yang sedang dipakai
 //   lm:klikKode     hash kode → klik saat kode itu AKTIF (dihitung juga ke lm:klik per 10 menit untuk atribusi sesi)
+//   lm:set goMati            "1" sejak kode pertama dibuat → /go di alamat dashboard mati selamanya (walau kode aktif dihapus)
 //   lm:klikKodeLama hash kode → klik yang datang setelah kode itu diganti (diteruskan ke link terbaru, tidak masuk lm:klik)
 import crypto from "node:crypto";
 export const KODE_RE = /^[A-Za-z0-9]{8}$/;
@@ -14,6 +15,6 @@ export const LINK_BASE = () => (process.env.LINK_BASE || "https://brw-link.verce
 export function cmdsKodeBaru(url, lama, now) {
   const kode = buatKode(), cmds = [];
   if (lama) cmds.push(["HSET", "lm:kode", lama.kode, JSON.stringify({ ...lama, selesai: now })]);
-  cmds.push(["HSET", "lm:kode", kode, JSON.stringify({ kode, url, kampanye: kampanyeDari(url), mulai: now, selesai: null })], ["HSET", "lm:set", "kodeAktif", kode]);
+  cmds.push(["HSET", "lm:kode", kode, JSON.stringify({ kode, url, kampanye: kampanyeDari(url), mulai: now, selesai: null })], ["HSET", "lm:set", "kodeAktif", kode], ["HSET", "lm:set", "goMati", "1"]);
   return { kode, cmds };
 }

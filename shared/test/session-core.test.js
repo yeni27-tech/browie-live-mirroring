@@ -197,4 +197,13 @@ tes("kode pelacakan: nama kampanye dicocokkan ke judul sesi", () => {
   assert.equal(C.lmOffSesi(s, []).adaData, false);
   const beda = C.lmOffSesi({ id: "z", date: "2026-10-09", sh: { title: "Judul yang sama sekali lain" } }, off); assert.equal(beda.cocok, null); assert.equal(beda.baris.length, 2);
 });
+tes("pembanding badge: sesi sebelumnya, rata-rata, median, jam yang sama", () => {
+  const L = C.lmGabung([{ id: "a", date: "2026-10-07", start: "10:23", penonton: 100 }, { id: "b", date: "2026-10-08", start: "16:00", penonton: 150 }, { id: "c", date: "2026-10-09", start: "10:00", penonton: 300 }, { id: "d", date: "2026-10-09", start: "20:00" }], []);
+  const s = L.find((x) => x.id === "c");
+  assert.equal(C.lmPembanding(L, s, "penonton", "sebelum").nilai, 150); assert.equal(Math.round(C.lmPembanding(L, s, "penonton", "sebelum").persen), 100);
+  assert.equal(C.lmPembanding(L, s, "penonton", "rata3").nilai, 125);
+  assert.equal(C.lmPembanding(L, s, "penonton", "jam").ref[0].id, "a");
+  assert.equal(C.lmPembanding(L, s, "penonton", "median").n, 2); // sesi tanpa angka (d) tidak ikut
+  assert.equal(C.lmPembanding(L, L.find((x) => x.id === "a"), "penonton", "sebelum"), null);
+});
 console.log("\n" + n + " tes lolos");

@@ -31,7 +31,7 @@ function jalan([c, k, ...a]) {
     case "HGETALL": return [...H(k)].flat();
     case "HEXISTS": return H(k).has(a[0]) ? 1 : 0;
     case "SET": { if (a.includes("NX") && db.has(k)) return null; db.set(k, a[0]); return "OK"; }
-    case "EVAL": return H("lm:set").has("kodeAktif") ? 0 : jalan(["HINCRBY", "lm:klik", a[2], 1]);
+    case "EVAL": return H("lm:set").has("kodeAktif") || H("lm:set").has("goMati") ? 0 : jalan(["HINCRBY", "lm:klik", a[2], 1]);
     case "HDEL": return H(k).delete(a[0]) ? 1 : 0;
     case "HLEN": return H(k).size;
     case "LPUSH": L(k).unshift(a[0]); return L(k).length;
@@ -334,5 +334,21 @@ await tes("link unik: simpan link Shopee → kode acak di alamat terpisah; ganti
   d = (await lihatData(ck("admin"))).body; assert.notEqual(d.link.aktif, k2); assert.equal(d.link.riwayat.length, n0 + 2);
   // /go di alamat dashboard sudah mati
   const g = mkRes(); await go(mkReq("GET", { headers: {} }), g); assert.equal(g.statusCode, 410);
+});
+await tes("CRUD kode link: ubah link+catatan, jadikan aktif lagi, hapus (aktif → tanpa link aktif, /go tetap mati)", async () => {
+  let d = (await lihatData(ck("admin"))).body; const lama = d.link.riwayat.find((x) => !x.aktif), aktif = d.link.aktif;
+  const u3 = "https://shopee.co.id/universal-link/browieofficial?utm_campaign=s1_ss_id_igbp_tesubah";
+  let r = await aksi({ aksi: "kode-ubah", kode: aktif, url: u3, catatan: "uji coba" }); assert.equal(r.statusCode, 200);
+  d = (await lihatData(ck("admin"))).body; const x = d.link.riwayat.find((y) => y.kode === aktif);
+  assert.equal(x.url, u3); assert.equal(x.kampanye, "s1_ss_id_igbp_tesubah"); assert.equal(x.catatan, "uji coba"); assert.equal(d.pengaturan.shopeeUrl, u3);
+  assert.equal((await aksi({ aksi: "kode-ubah", kode: aktif, url: "https://penipu.com" })).statusCode, 400);
+  r = await aksi({ aksi: "kode-aktifkan", kode: lama.kode }); assert.equal(r.statusCode, 200);
+  d = (await lihatData(ck("admin"))).body; assert.equal(d.link.aktif, lama.kode); assert.equal(d.pengaturan.shopeeUrl, lama.url); assert.ok(d.link.riwayat.find((y) => y.kode === aktif).selesai);
+  r = await aksi({ aksi: "kode-hapus", kode: lama.kode }); assert.equal(r.statusCode, 200);
+  d = (await lihatData(ck("admin"))).body; assert.equal(d.link.aktif, null); assert.ok(!d.link.riwayat.some((y) => y.kode === lama.kode));
+  const l = (await import("../../link/api/l.js")).default, res = mkRes(), q = mkReq("GET", { headers: {} }); q.query = { kode: lama.kode }; await l(q, res); assert.equal(res.statusCode, 404);
+  const g = mkRes(); await go(mkReq("GET", { headers: {} }), g); assert.equal(g.statusCode, 410);
+  assert.equal((await aksi({ aksi: "kode-baru" })).statusCode, 200); assert.match((await lihatData(ck("admin"))).body.link.aktif, /^[A-Za-z0-9]{8}$/);
+  assert.equal((await aksi({ aksi: "kode-hapus", kode: "../x" })).statusCode, 400);
 });
 console.log("\n" + n + " tes lolos");
