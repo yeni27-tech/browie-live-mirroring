@@ -26,6 +26,9 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   }
   else if (msg.type === "tarik-kirim" && sender.tab && Array.isArray(msg.sh)) { kirimSesi(msg.sh, !!msg.otomatis).then(reply, (e) => reply({ ok: false, galat: String(e && e.message || e) })); return true; }
   else if (msg.type === "off-kirim" && sender.tab && Array.isArray(msg.off)) { kirimPayload({ off: msg.off }, !!msg.otomatis, msg.off.length + " baris kode pelacakan").then(reply, (e) => reply({ ok: false, galat: String(e && e.message || e) })); return true; }
+  else if (msg.type === "pratinjau" && sender.tab && msg.mentah) { kirimMentah(msg.mentah, true).then(reply, (e) => reply({ ok: false, galat: String(e && e.message || e) })); return true; }
+  else if (msg.type === "kirim-mentah" && sender.tab && msg.mentah) { kirimMentah(msg.mentah, false, !!msg.otomatis).then(reply, (e) => reply({ ok: false, galat: String(e && e.message || e) })); return true; }
+  else if (msg.type === "resep" && sender.tab) { ambilResep().then(reply, () => reply(null)); return true; }
   else if (msg.type === "off-tpl" && sender.tab && msg.tpl && typeof msg.tpl === "object") { chrome.storage.local.set({ offTpl: msg.tpl }).catch(() => {}); }
   else if (msg.type === "buka-dashboard") { chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") }); }
   return false;
@@ -82,4 +85,30 @@ async function kirimPayload(payload, otomatis, label) {
   if (!otomatis && payload.sh) { const { settings: s2 } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...(s2 || {}), tarikOK: true } }); } // kirim manual pertama yang sukses = tanda sudah dicocokkan host
   await catat("scrape", "Terkirim ke dashboard: " + label);
   return { ok: true, diterima: j.diterima || j.off || 0, baru: j.baru || 0 };
+}
+
+// Data MENTAH Seller Centre → dashboard (pemetaan kolom di server). pratinjau=true: server memetakan & mengembalikan, tidak menyimpan.
+async function kirimMentah(mentah, pratinjau, otomatis) {
+  const { settings } = await chrome.storage.local.get("settings");
+  if (!settings || !settings.dashUrl || !settings.pushToken) return { ok: false, galat: "Alamat dashboard / kode kirim belum diisi di ⚙️ Pengaturan ekstensi." };
+  const res = await fetch(settings.dashUrl.replace(/\/+$/, "") + "/api/push", { method: "POST", headers: { "content-type": "application/json", Authorization: "Bearer " + settings.pushToken }, body: JSON.stringify({ mentah, pratinjau: !!pratinjau }) });
+  let j = {}; try { j = await res.json(); } catch (e) {}
+  if (!res.ok) return { ok: false, galat: res.status === 401 ? "Kode kirim salah. Minta kode terbaru ke Yeni." : (j.error || "HTTP " + res.status) };
+  if (pratinjau) return j;
+  if (!otomatis && mentah.sesi) { const { settings: s2 } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...(s2 || {}), tarikOK: true } }); }
+  await catat("scrape", "Terkirim ke dashboard: " + (mentah.sesi ? (j.diterima || 0) + " sesi" : "") + (mentah.off ? (j.off || 0) + " baris kode pelacakan" : ""));
+  return { ok: true, diterima: j.diterima || 0, baru: j.baru || 0, off: j.off || 0 };
+}
+// Resep alamat penarikan dari dashboard (disimpan ±6 jam). Gagal → pakai resep terakhir / bawaan ekstensi.
+async function ambilResep() {
+  const { resep, settings } = await chrome.storage.local.get(["resep", "settings"]);
+  if (resep && Date.now() - (resep.at || 0) < 6 * 3600000) return resep;
+  if (!settings || !settings.dashUrl || !settings.pushToken) return resep || null;
+  try {
+    const res = await fetch(settings.dashUrl.replace(/\/+$/, "") + "/api/resep", { headers: { Authorization: "Bearer " + settings.pushToken } });
+    if (!res.ok) return resep || null;
+    const r = { ...(await res.json()), at: Date.now() };
+    await chrome.storage.local.set({ resep: r });
+    return r;
+  } catch (e) { return resep || null; }
 }

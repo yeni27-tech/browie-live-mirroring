@@ -4,6 +4,7 @@
 import { readBody, tokenEkstensi, cors } from "./_auth.js";
 import { redis } from "./_redis.js";
 import { bacaSh, catatLog } from "./_store.js";
+import { petakanRespons, petakanOff, ringkas, ringkasOff } from "./_petakan.js";
 
 const ID_OK = /^[A-Za-z0-9_.:-]{1,80}$/;
 
@@ -14,6 +15,15 @@ export default async function handler(req, res) {
   if (!tokenEkstensi(req)) return res.status(401).json({ error: "token salah" });
   let j;
   try { j = JSON.parse((await readBody(req, 0.9)).toString()); } catch (e) { return res.status(400).json({ error: "bukan JSON atau terlalu besar" }); }
+  // Sejak 17 Okt 2026 ekstensi mengirim data MENTAH Seller Centre ({ mentah: { sesi, off } }); pemetaan kolom terjadi di sini
+  // supaya perubahan format Shopee cukup diperbaiki di web. pratinjau:true = petakan & kembalikan saja, TIDAK disimpan.
+  if (j && j.mentah && typeof j.mentah === "object") {
+    try {
+      if (j.mentah.sesi) j.sh = petakanRespons(j.mentah.sesi).sh;
+      if (j.mentah.off) j.off = petakanOff(j.mentah.off).off;
+    } catch (e) { return res.status(422).json({ error: "Data Shopee tidak bisa dibaca: " + e.message }); }
+    if (j.pratinjau) return res.json({ ok: true, pratinjau: true, sh: j.sh || [], off: j.off || [], ringkasSh: (j.sh || []).slice(0, 3).map(ringkas), ringkasOff: (j.off || []).slice(-3).reverse().map(ringkasOff) });
+  }
   if (!j || (!Array.isArray(j.sh) && !Array.isArray(j.off))) return res.status(400).json({ error: "bentuk data salah: butuh sh[] atau off[]" });
   const shIn = Array.isArray(j.sh) ? j.sh : [];
   const masuk = shIn.filter((s) => s && ID_OK.test(String(s.id || "")) && /^\d{4}-\d{2}-\d{2}$/.test(String(s.date || "")));

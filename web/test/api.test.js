@@ -351,4 +351,16 @@ await tes("CRUD kode link: ubah link+catatan, jadikan aktif lagi, hapus (aktif â
   assert.equal((await aksi({ aksi: "kode-baru" })).statusCode, 200); assert.match((await lihatData(ck("admin"))).body.link.aktif, /^[A-Za-z0-9]{8}$/);
   assert.equal((await aksi({ aksi: "kode-hapus", kode: "../x" })).statusCode, 400);
 });
+await tes("push data MENTAH: pratinjau dipetakan server tanpa disimpan, kirim betulan disimpan; resep butuh token", async () => {
+  const mentah = { code: 0, data: { list: [{ startTime: Date.UTC(2026, 9, 15, 12, 0), duration: 3600, viewers: 77, views: 99, placedSales: 50000, placedOrders: 1, title: "Tes Mentah" }] } };
+  let r = mkRes(); await push(mkReq("POST", { headers: EXT, body: { mentah: { sesi: mentah }, pratinjau: true } }), r);
+  assert.equal(r.statusCode, 200); assert.equal(r.body.sh[0].id, "s-2026-10-15-1900"); assert.equal(r.body.sh[0].penonton, 77); assert.ok(/Rp50\.000/.test(r.body.ringkasSh[0].isi));
+  let d = (await lihatData(ck("admin"))).body; assert.ok(!d.sh.some((s) => s.id === "s-2026-10-15-1900"));
+  r = mkRes(); await push(mkReq("POST", { headers: EXT, body: { mentah: { sesi: mentah } } }), r); assert.equal(r.body.diterima, 1);
+  d = (await lihatData(ck("admin"))).body; assert.equal(d.sh.find((s) => s.id === "s-2026-10-15-1900").penonton, 77);
+  r = mkRes(); await push(mkReq("POST", { headers: EXT, body: { mentah: { sesi: { code: 1001 } } } }), r); assert.equal(r.statusCode, 422);
+  const resep = (await import("../api/resep.js")).default;
+  r = mkRes(); resep(mkReq("GET", {}), r); assert.equal(r.statusCode, 401);
+  r = mkRes(); resep(mkReq("GET", { headers: EXT }), r); assert.ok(r.body.sesi.path.startsWith("/api/"));
+});
 console.log("\n" + n + " tes lolos");

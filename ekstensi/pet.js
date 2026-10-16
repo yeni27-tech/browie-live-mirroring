@@ -23,7 +23,7 @@
 
   const T0 = Date.now();
   const SC_OK = location.hostname === "seller.shopee.co.id" && typeof lmTarik !== "undefined";
-  let offPrev = null, offTpl = null, tarikSt = {}, tarikOK = false, tarikPrev = null, tarikBusy = false, intip = [], petStatus = { events: [], halaman: [], scrape: { state: "belum" } }, settings = {}, hidden = false, open = false, pos = null, userPos = null, dilihat = 0;
+  let resep = null, offPrev = null, offTpl = null, tarikSt = {}, tarikOK = false, tarikPrev = null, tarikBusy = false, intip = [], petStatus = { events: [], halaman: [], scrape: { state: "belum" } }, settings = {}, hidden = false, open = false, pos = null, userPos = null, dilihat = 0;
 
   // ---------- kerangka ----------
   const host = document.createElement("div");
@@ -185,10 +185,10 @@
     else if (sc.state === "gagal") scrapeIsi = `<span class="pill b">Gagal</span><div class="alert" style="margin:8px 0 0">${esc(sc.galat || sc.msg || "Penarikan gagal.")}</div>`;
     else scrapeIsi = `<span class="pill n">Belum ditarik</span>`;
     if (SC_OK) scrapeIsi += `<div class="petunjuk" style="margin:10px 0 0"><b>Dari Instagram menurut Shopee</b> (kode pelacakan): kunjungan, keranjang, pesanan per kampanye.${offTpl ? "" : " <b>Belum siap</b>: buka halaman Laporan Pengunjung dari Platform Eksternal di tab ini sekali, lalu muat ulang."}</div><div class="btns" style="margin-top:6px"><button data-a="tarikoff" ${tarikBusy || !offTpl ? "disabled" : ""}>⬇︎ Tarik data Instagram</button></div>`;
-    if (offPrev && offPrev.off) scrapeIsi += offPrev.off.length ? `<div class="petunjuk" style="margin:8px 0 0"><b>Cocokkan dengan halaman Shopee</b> (${offPrev.off.length} baris, 3 terbaru):</div><ul class="log">${offPrev.off.slice(-3).reverse().map((o) => { const r = lmTarik.ringkasOff(o); return `<li><span><b>${esc(r.judul)}</b><br>${esc(r.isi)}</span></li>`; }).join("")}</ul><div class="btns" style="margin-top:8px"><button class="pri" data-a="kirimoff" ${tarikBusy ? "disabled" : ""}>Kirim ${offPrev.off.length} baris ke dashboard</button></div>` : `<div class="petunjuk" style="margin:8px 0 0">Shopee belum mencatat kunjungan dari kode pelacakan pada rentang ini.</div>`;
+    if (offPrev && offPrev.off) scrapeIsi += offPrev.off.length ? `<div class="petunjuk" style="margin:8px 0 0"><b>Cocokkan dengan halaman Shopee</b> (${offPrev.off.length} baris, 3 terbaru):</div><ul class="log">${(offPrev.ringkas || []).map((r) => { return `<li><span><b>${esc(r.judul)}</b><br>${esc(r.isi)}</span></li>`; }).join("")}</ul><div class="btns" style="margin-top:8px"><button class="pri" data-a="kirimoff" ${tarikBusy ? "disabled" : ""}>Kirim ${offPrev.off.length} baris ke dashboard</button></div>` : `<div class="petunjuk" style="margin:8px 0 0">Shopee belum mencatat kunjungan dari kode pelacakan pada rentang ini.</div>`;
     if (SC_OK) scrapeIsi += `<div class="petunjuk" style="margin:6px 0 0">${tarikOK ? "🕒 Otomatis <b>aktif</b>: tarik tidak teratur (±15–58 menit, selalu &lt; 1 jam) saat kamu sedang memakai halaman ini, jatah acak 14–22x/hari, libur 00–07 WIB." + (tarikSt.next ? " Berikutnya sekitar " + new Date(tarikSt.next).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + "." : "") + (tarikSt.berhentiSampai > Date.now() ? " <b>Berhenti sementara</b> sampai " + new Date(tarikSt.berhentiSampai).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + "." : "") : "🕒 Otomatis <b>belum aktif</b>: aktif sendiri setelah tarikan manual pertama kamu kirim."}</div>`;
     if (sc.state !== "jalan") scrapeIsi += SC_OK ? `<div class="petunjuk" style="margin:6px 0 0">Menarik daftar sesi live (hanya membaca) dari halaman ini: durasi, penonton, puncak, klik, keranjang, pesanan, penjualan, follow. <b>Asal penonton dan produk terjual belum ikut</b> (masih screenshot).</div><div class="btns" style="margin-top:8px"><button class="pri" data-a="tarik" ${tarikBusy ? "disabled" : ""}>⬇︎ Tarik sesi live</button></div>` : `<div class="petunjuk" style="margin:6px 0 0">Penarikan jalan dari halaman <b>seller.shopee.co.id</b>. Buka Seller Centre di tab itu (bukan creator.shopee.co.id), lalu klik aku lagi.</div>`;
-    if (tarikPrev && tarikPrev.sh && tarikPrev.sh.length) scrapeIsi += `<div class="petunjuk" style="margin:8px 0 0"><b>Cocokkan dulu dengan Seller Centre</b> (${tarikPrev.sh.length} sesi terbaca, 3 terbaru):</div><ul class="log">${tarikPrev.sh.slice(0, 3).map((s) => { const r = lmTarik.ringkas(s); return `<li><span><b>${esc(r.judul)}</b><br>${esc(r.isi)}</span></li>`; }).join("")}</ul><div class="btns" style="margin-top:8px"><button class="pri" data-a="kirim" ${tarikBusy ? "disabled" : ""}>Kirim ${tarikPrev.sh.length} sesi ke dashboard</button></div><div class="petunjuk" style="margin:6px 0 0">Kalau angkanya beda dari Seller Centre, <b>jangan kirim</b>, kabari Yeni.</div>`;
+    if (tarikPrev && tarikPrev.sh && tarikPrev.sh.length) scrapeIsi += `<div class="petunjuk" style="margin:8px 0 0"><b>Cocokkan dulu dengan Seller Centre</b> (${tarikPrev.sh.length} sesi terbaca, 3 terbaru):</div><ul class="log">${(tarikPrev.ringkas || []).map((r) => { return `<li><span><b>${esc(r.judul)}</b><br>${esc(r.isi)}</span></li>`; }).join("")}</ul><div class="btns" style="margin-top:8px"><button class="pri" data-a="kirim" ${tarikBusy ? "disabled" : ""}>Kirim ${tarikPrev.sh.length} sesi ke dashboard</button></div><div class="petunjuk" style="margin:6px 0 0">Kalau angkanya beda dari Seller Centre, <b>jangan kirim</b>, kabari Yeni.</div>`;
     const dash = settings && settings.dashUrl ? `<span class="pill g">Tersambung</span> <span style="color:#7A6A62;font-size:12px">${esc(settings.dashUrl.replace(/^https:\/\//, ""))}</span>` : `<span class="pill w">Belum disambungkan</span> <span style="color:#7A6A62;font-size:12px">isi di ekstensi → ⚙️ Pengaturan</span>`;
     const log = ev.slice(0, 8).map((e) => `<li><time>${jam(e.t)}</time><span class="${e.jenis === "galat" ? "galat" : ""}">${e.jenis === "endpoint" ? "📡 Terekam: " : e.jenis === "halaman" ? "📄 Halaman: " : e.jenis === "galat" ? "⚠️ " : ""}${esc(e.teks)}</span></li>`).join("");
     return `<div class="hd"><b>browie <span>Live Mirroring</span></b><span class="st pill ${pillM[0]}">${pillM[1]}</span></div>
@@ -218,13 +218,19 @@
     else if (b.dataset.a === "sembunyi") { hidden = true; chrome.storage.local.set({ petHidden: true }); paint(); }
     else if (b.dataset.a === "tarik") {
       tarikBusy = true; tarikPrev = null; send({ type: "scrape-set", patch: { state: "jalan", msg: "Menarik daftar sesi live…" } }); paint();
-      try { const h = await lmTarik.tarik((u, o) => fetch(u, o), location.origin); tarikPrev = h; send({ type: "scrape-set", patch: { state: "selesai", done: h.sh.length, total: h.total || h.sh.length, msg: h.sh.length + " sesi terbaca. Cocokkan, lalu kirim." } }); }
+      try {
+        await segarkanResep(); const h = await lmTarik.tarik((u, o) => fetch(u, o), location.origin, resep);
+        const pv = await send({ type: "pratinjau", mentah: { sesi: h.mentah } });
+        if (!pv || pv.ok === false) throw new Error((pv && pv.galat) || "Dashboard online tidak bisa membaca data ini.");
+        tarikPrev = { mentah: h.mentah, sh: pv.sh || [], ringkas: pv.ringkasSh || [] };
+        send({ type: "scrape-set", patch: { state: "selesai", done: tarikPrev.sh.length, total: tarikPrev.sh.length, msg: tarikPrev.sh.length + " sesi terbaca. Cocokkan, lalu kirim." } });
+      }
       catch (er) { send({ type: "scrape-set", patch: { state: "gagal", galat: er.message } }); }
       tarikBusy = false; paint();
     }
     else if (b.dataset.a === "kirim" && tarikPrev) {
       tarikBusy = true; paint();
-      const r = await send({ type: "tarik-kirim", sh: tarikPrev.sh });
+      const r = await send({ type: "kirim-mentah", mentah: { sesi: tarikPrev.mentah } });
       tarikBusy = false;
       if (r && r.ok) { send({ type: "scrape-set", patch: { state: "selesai", done: r.diterima, total: r.diterima, msg: "Terkirim: " + r.diterima + " sesi (" + r.baru + " baru)." } }); tarikPrev = null; }
       else send({ type: "scrape-set", patch: { state: "gagal", galat: (r && r.galat) || "Kirim gagal." } });
@@ -232,13 +238,18 @@
     }
     else if (b.dataset.a === "tarikoff") {
       tarikBusy = true; offPrev = null; send({ type: "scrape-set", patch: { state: "jalan", msg: "Menarik data kode pelacakan…" } }); paint();
-      try { offPrev = await tarikOffSekarang(); send({ type: "scrape-set", patch: { state: "selesai", msg: offPrev.off.length + " baris kode pelacakan terbaca. Cocokkan, lalu kirim." } }); }
+      try {
+        const h = await tarikOffSekarang(), pv = await send({ type: "pratinjau", mentah: { off: h.mentah } });
+        if (!pv || pv.ok === false) throw new Error((pv && pv.galat) || "Dashboard online tidak bisa membaca data ini.");
+        offPrev = { mentah: h.mentah, off: pv.off || [], ringkas: pv.ringkasOff || [] };
+        send({ type: "scrape-set", patch: { state: "selesai", msg: offPrev.off.length + " baris kode pelacakan terbaca. Cocokkan, lalu kirim." } });
+      }
       catch (er) { send({ type: "scrape-set", patch: { state: "gagal", galat: er.message } }); }
       tarikBusy = false; paint();
     }
     else if (b.dataset.a === "kirimoff" && offPrev) {
       tarikBusy = true; paint();
-      const r = await send({ type: "off-kirim", off: offPrev.off });
+      const r = await send({ type: "kirim-mentah", mentah: { off: offPrev.mentah } });
       tarikBusy = false;
       if (r && r.ok) { send({ type: "scrape-set", patch: { state: "selesai", msg: "Terkirim: " + offPrev.off.length + " baris kode pelacakan." } }); offPrev = null; }
       else send({ type: "scrape-set", patch: { state: "gagal", galat: (r && r.galat) || "Kirim gagal." } });
@@ -276,16 +287,21 @@
     if (!SC_OK) return;
     const nama = namaResource();
     for (let i = nama.length - 1; i >= 0; i--) {
-      if (nama[i].indexOf("/traffic-reporting/channel-metric/") < 0) continue;
-      const t = lmTarik.pelajariOff(nama[i]);
+      const offPath = lmTarik.pakaiResep(resep).off.path;
+      if (nama[i].indexOf(offPath) < 0) continue;
+      const t = lmTarik.pelajariOff(nama[i], offPath);
       if (t) { offTpl = t; send({ type: "off-tpl", tpl: t }); }
       return;
     }
   }
   const tglWibIni = (selisihHari) => new Date(Date.now() + 7 * 3600000 - (selisihHari || 0) * 86400000).toISOString().slice(0, 10);
   async function tarikOffSekarang() {
-    return lmTarik.tarikOff((u, o) => fetch(u, o), offTpl, lmTarik.cariCds(namaResource()), tglWibIni(14), tglWibIni(0), location.origin);
+    await segarkanResep();
+    return lmTarik.tarikOff((u, o) => fetch(u, o), offTpl, lmTarik.cariCds(namaResource()), tglWibIni(14), tglWibIni(0), location.origin, resep);
   }
+  // Resep alamat penarikan dari dashboard (lewat background, disimpan ±6 jam). Gagal → resep bawaan ekstensi.
+  async function segarkanResep() { const r = await send({ type: "resep" }); if (r && r.sesi) resep = r; }
+  segarkanResep();
   belajarOff(); setInterval(belajarOff, 30000);
 
   // ---------- tarik otomatis berpola (lihat POLA di tarik-sesi.js) ----------
@@ -304,13 +320,14 @@
     await new Promise((r) => setTimeout(r, lmTarik.acak(lmTarik.POLA.tundaMinDtk, lmTarik.POLA.tundaMaksDtk) * 1000));
     try {
       send({ type: "scrape-set", patch: { state: "jalan", msg: "Tarik otomatis…" } });
-      const h = await lmTarik.tarik((u, o) => fetch(u, o), location.origin);
-      const fp = lmTarik.sidik(h.sh);
-      if (fp !== tarikSt.fp && h.sh.length) {
-        const r = await send({ type: "tarik-kirim", sh: h.sh, otomatis: true });
-        if (r && r.ok) { tarikSt.fp = fp; send({ type: "scrape-set", patch: { state: "selesai", done: h.sh.length, total: h.sh.length, msg: "Otomatis: " + r.diterima + " sesi terkirim." } }); }
+      await segarkanResep();
+      const h = await lmTarik.tarik((u, o) => fetch(u, o), location.origin, resep);
+      const fp = lmTarik.sidikMentah(h.mentah.data.list);
+      if (fp !== tarikSt.fp && h.dibaca) {
+        const r = await send({ type: "kirim-mentah", mentah: { sesi: h.mentah }, otomatis: true });
+        if (r && r.ok) { tarikSt.fp = fp; send({ type: "scrape-set", patch: { state: "selesai", done: r.diterima, total: r.diterima, msg: "Otomatis: " + r.diterima + " sesi terkirim." } }); }
         else { jenis = "galat"; send({ type: "scrape-set", patch: { state: "gagal", galat: (r && r.galat) || "Kirim gagal." } }); }
-      } else send({ type: "scrape-set", patch: { state: "selesai", done: h.sh.length, total: h.sh.length, msg: "Tidak ada perubahan, tidak dikirim." } });
+      } else send({ type: "scrape-set", patch: { state: "selesai", done: h.dibaca, total: h.dibaca, msg: "Tidak ada perubahan, tidak dikirim." } });
     } catch (er) {
       const m = String(er.message || "");
       jenis = /Failed to fetch|NetworkError|Load failed/i.test(m) ? "jaringan" : /429|403|Login|code 4/.test(m) ? (/429|403/.test(m) ? "keras" : "login") : "galat";
@@ -318,8 +335,8 @@
     }
     if (jenis === "ok" && offTpl && Date.now() - (tarikSt.offAt || 0) > 90 * 60000) {
       try {
-        const h2 = await tarikOffSekarang(); const fp2 = lmTarik.sidik(h2.off.map((o) => ({ id: o.date + "|" + o.campaign, ...o })));
-        if (h2.off.length && fp2 !== tarikSt.offFp) { const r2 = await send({ type: "off-kirim", off: h2.off, otomatis: true }); if (r2 && r2.ok) tarikSt.offFp = fp2; }
+        const h2 = await tarikOffSekarang(); const fp2 = lmTarik.sidikMentah(h2.mentah.result.channel_performance_by_day);
+        if (h2.dibaca && fp2 !== tarikSt.offFp) { const r2 = await send({ type: "kirim-mentah", mentah: { off: h2.mentah }, otomatis: true }); if (r2 && r2.ok) tarikSt.offFp = fp2; }
         tarikSt.offAt = Date.now();
       } catch (er2) { tarikSt.offAt = Date.now(); send({ type: "scrape-set", patch: { state: "gagal", galat: "Kode pelacakan: " + er2.message } }); }
     }

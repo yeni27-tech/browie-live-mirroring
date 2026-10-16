@@ -1,27 +1,22 @@
 const assert = require("assert");
 const T = require("../tarik-sesi.js");
-let n = 0; const ok = (nama, f) => { f(); n++; };
-// Bentuk baris persis hasil mode intip (nama kolom); nilai karangan.
-const baris = { atc: 5, avgViewsDuration: 188, comments: 4, confirmedOrders: 1, confirmedSales: 84000, conversionRate: 0.01, coverImage: "x", duration: 5801, followersGrowth: 1, likes: 331, peakViewers: 4, placedOrders: 1, placedSales: 84000, productClicks: 25, sessionId: 227046741, startTime: 1791345780000, status: 3, title: "Ngalis 10 Menit", viewers: 87, views: 124 };
-ok("detik & milidetik dikenali", () => { assert.strictEqual(T.durDetik(5801), 5801); assert.strictEqual(T.durDetik(5801000), 5801); assert.strictEqual(T.avgDetik(188000), 188); assert.strictEqual(T.avgDetik(188), 188); });
-ok("timestamp s/ms/µs/ns → ms", () => { for (const v of [1791345780, 1791345780000, 1791345780000000, 1791345780000000000]) assert.strictEqual(Math.round(T.keMs(v)), 1791345780000); });
-ok("pemetaan + WIB (UTC+7) + id seperti input manual", () => {
-  const s = T.petakan({ ...baris, startTime: Date.UTC(2026, 9, 7, 3, 23) });
-  assert.strictEqual(s.date, "2026-10-07"); assert.strictEqual(s.start, "10:23"); assert.strictEqual(s.id, "s-2026-10-07-1023");
-  assert.strictEqual(s.penonton, 87); assert.strictEqual(s.ditonton, 124); assert.strictEqual(s.puncak, 4); assert.strictEqual(s.avg, 188); assert.strictEqual(s.dur, 5801);
-  assert.strictEqual(s.klik, 25); assert.strictEqual(s.pesanan, 1); assert.strictEqual(s.jual, 84000); assert.strictEqual(s.follow, 1); assert.strictEqual(s.ctr, 20.2);
-});
-ok("lewat tengah malam WIB pindah tanggal", () => { const s = T.petakan({ ...baris, startTime: Date.UTC(2026, 9, 7, 17, 30) }); assert.strictEqual(s.date, "2026-10-08"); assert.strictEqual(s.start, "00:30"); });
-ok("null tidak jadi nol; tanpa startTime dibuang", () => { const s = T.petakan({ ...baris, comments: null, startTime: 1791345780000 }); assert.ok(!("komen" in s)); assert.strictEqual(T.petakan({ ...baris, startTime: null }), null); });
-ok("respons salah → error jelas", () => { assert.throws(() => T.petakanRespons({ code: 1001, msg: "no login" }), /Login/); assert.throws(() => T.petakanRespons({ code: 0, data: {} }), /tidak dikenali/); });
-ok("ringkas terbaca manusia", () => { const r = T.ringkas(T.petakan({ ...baris, startTime: Date.UTC(2026, 9, 7, 3, 23) })); assert.ok(/1:36:41/.test(r.isi) && /Rp84\.000/.test(r.isi)); });
+// Sejak 17 Okt 2026 ekstensi hanya mengambil data MENTAH; pemetaan kolom dites di web/test/petakan.test.js.
+const baris = { duration: 5801, viewers: 87, views: 124, startTime: 1791345780000, sessionId: 1, title: "x" };
 (async () => {
-  let panggilan = [];
-  const f = async (u) => { panggilan.push(u); return panggilan.length === 1 ? { ok: false, status: 400 } : { ok: true, status: 200, json: async () => ({ code: 0, data: { list: [baris], total: 1 } }) }; };
+  let n = 0;
+  const panggil = [];
+  const f = async (u) => { panggil.push(u); return panggil.length === 1 ? { ok: false, status: 400 } : { ok: true, status: 200, json: async () => ({ code: 0, data: { list: [baris], total: 1 } }) }; };
   const h = await T.tarik(f, "https://seller.shopee.co.id");
-  assert.strictEqual(h.sh.length, 1); assert.strictEqual(panggilan.length, 2); assert.ok(/orderBy=startTime/.test(panggilan[1])); n++;
+  assert.strictEqual(h.dibaca, 1); assert.deepStrictEqual(h.mentah.data.list[0], baris); assert.strictEqual(panggil.length, 2); assert.ok(/orderBy=startTime/.test(panggil[1])); n++;
   const g = await T.tarik(async () => ({ ok: false, status: 401 })).catch((e) => e); assert.ok(/Login/.test(g.message)); n++;
-  console.log(n + " tes lolos");
+  const ditolak = await T.tarik(async () => ({ ok: true, status: 200, json: async () => ({ code: 1001, msg: "no login" }) })).catch((e) => e); assert.ok(/Shopee menolak/.test(ditolak.message)); n++;
+  // resep dari server dipakai; path/query di luar pola /api/… dan ?a=b ditolak → kembali ke bawaan
+  let url = ""; await T.tarik(async (u) => { url = u; return { ok: true, status: 200, json: async () => ({ code: 0, data: { list: [] } }) }; }, "https://s", { sesi: { path: "/api/baru/daftarSesi", varian: ["?p=1"] } });
+  assert.strictEqual(url, "https://s/api/baru/daftarSesi?p=1"); n++;
+  await T.tarik(async (u) => { url = u; return { ok: true, status: 200, json: async () => ({ code: 0, data: { list: [] } }) }; }, "https://s", { sesi: { path: "https://jahat.com/x", varian: ["javascript:alert(1)"] } });
+  assert.ok(url.startsWith("https://s" + T.ENDPOINT + "?page=1")); n++;
+  assert.notStrictEqual(T.sidikMentah([baris]), T.sidikMentah([{ ...baris, viewers: 88 }])); assert.strictEqual(T.sidikMentah([baris]), T.sidikMentah([{ ...baris }])); n++;
+  console.log(n + " tes tarik mentah lolos");
 })();
 // ---- pola jadwal ----
 (function () {
@@ -74,11 +69,8 @@ ok("ringkas terbaca manusia", () => { const r = T.ringkas(T.petakan({ ...baris, 
   A.strictEqual(u.searchParams.get("end_time"), String(Math.floor(Date.parse("2026-10-09T23:59:59+07:00") / 1000)));
   A.strictEqual(u.searchParams.get("channel"), "Instagram"); n += 3;
   A.throws(() => T.bangunUrlOff(null, "x", "2026-10-01", "2026-10-02"), /Laporan Pengunjung/); A.throws(() => T.bangunUrlOff(tpl, null, "2026-10-01", "2026-10-02"), /SPC_CDS/); n += 2;
-  const respons = { code: 0, result: { channel_performance_by_day: [{ date: Math.floor(Date.parse("2026-10-09T00:00:00+07:00") / 1000), campaign_description: "NGALIS10MENITTAHAN3HARI", channel: "Instagram", visits: 40, visitors: 31, add_to_cart_users: 6, add_to_cart_units: 7, add_to_cart_value: 595000, orders: 2, sales: 170000, buyers: 2, new_buyers: 1, units: 2 }] } };
-  const h = T.petakanOff(respons);
-  A.strictEqual(h.off.length, 1); A.strictEqual(h.off[0].date, "2026-10-09"); A.strictEqual(h.off[0].visits, 40); A.strictEqual(h.off[0].sales, 170000); A.strictEqual(h.off[0].atcUsers, 6); n += 4;
-  A.ok(/Rp170\.000/.test(T.ringkasOff(h.off[0]).isi)); n++;
-  A.strictEqual(T.petakanOff({ code: 0, result: { channel_performance_by_day: [] } }).off.length, 0); A.throws(() => T.petakanOff({ code: 0, result: {} }), /tidak dikenali/); n += 2;
-  const r = await T.tarikOff(async (u2) => { A.ok(/channel-metric/.test(u2)); return { ok: true, status: 200, json: async () => respons }; }, tpl, "abc-123", "2026-10-01", "2026-10-09", "https://seller.shopee.co.id"); A.strictEqual(r.off.length, 1); n++;
+  const respons = { code: 0, result: { channel_performance_by_day: [{ date: 1, campaign_description: "X", visits: 40 }] } };
+  const r = await T.tarikOff(async (u2) => { A.ok(/channel-metric/.test(u2)); return { ok: true, status: 200, json: async () => respons }; }, tpl, "abc-123", "2026-10-01", "2026-10-09", "https://seller.shopee.co.id"); A.strictEqual(r.dibaca, 1); A.deepStrictEqual(r.mentah, respons); n += 2;
+  const salah = await T.tarikOff(async () => ({ ok: true, status: 200, json: async () => ({ code: 0, result: {} }) }), tpl, "abc-123", "2026-10-01", "2026-10-09", "").catch((e) => e); A.ok(/tidak dikenali/.test(salah.message)); n++;
   console.log(n + " tes laporan eksternal lolos");
 })();

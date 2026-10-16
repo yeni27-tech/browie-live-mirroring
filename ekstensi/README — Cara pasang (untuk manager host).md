@@ -42,7 +42,7 @@ Kalau sempat: isi **asal penonton** (dashboard live Shopee → Sumber Menonton) 
 
 ## Untuk yang merawat
 - Tes: `node test/intip-hook.test.js` · `node test/tarik-sesi.test.js`.
-- Sejak 17 Okt 2026 ekstensi tidak memuat tampilan laporan: tab 📡 Status hanya mengecek sambungan, semua laporan ada di dashboard online. Perubahan tampilan cukup deploy web, laptop host tidak perlu update. `style.css` & `theme.js` = salinan dari `../shared/` (`sh ../salin-shared.sh`).
+- Sejak 17 Okt 2026 ekstensi tidak memuat tampilan laporan: tab 📡 Status hanya mengecek sambungan, semua laporan ada di dashboard online. Perubahan tampilan cukup deploy web, laptop host tidak perlu update. Ekstensi juga hanya mengirim data MENTAH Seller Centre: pemetaan kolom ada di `web/api/_petakan.js` dan alamat endpoint di `web/api/resep.js` (diambil ekstensi tiap ±6 jam), jadi kalau Shopee mengganti nama kolom atau alamat, cukup ubah web lalu deploy. `style.css` & `theme.js` = salinan dari `../shared/` (`sh ../salin-shared.sh`).
 - Pembaca screenshot (Tesseract) & JEV ada di dashboard online (`../web/`), bukan di ekstensi.
 
 ## Si Henna — pet pemantau (v0.9.0)

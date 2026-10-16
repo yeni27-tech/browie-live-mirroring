@@ -5,79 +5,35 @@
 // ke host sebagai pratinjau sebelum dikirim, supaya dicocokkan dengan Seller Centre sekali.
 (function (root) {
   const ENDPOINT = "/api/supply/lm/sellercenter/realtime/sessionList";
-  const num = (v) => (typeof v === "number" && isFinite(v) ? v : typeof v === "string" && v.trim() !== "" && isFinite(Number(v)) ? Number(v) : null);
-
-  // Timestamp bisa detik, milidetik, mikrodetik, atau nanodetik → milidetik.
-  function keMs(v) {
-    const n = num(v); if (n == null || n <= 0) return null;
-    if (n > 1e17) return n / 1e6;
-    if (n > 1e14) return n / 1e3;
-    if (n > 1e11) return n;
-    return n * 1000;
-  }
-  // Durasi: sesi live tidak mungkin > 2 hari, jadi angka > 172.800 pasti milidetik.
-  function durDetik(v) { const n = num(v); if (n == null) return null; return Math.round(n > 172800 ? n / 1000 : n); }
-  // Rata-rata tonton: > 7.200 (2 jam) pasti milidetik.
-  function avgDetik(v) { const n = num(v); if (n == null) return null; return Math.round(n > 7200 ? n / 1000 : n); }
-  function wib(ms) { const iso = new Date(ms + 7 * 3600000).toISOString(); return { date: iso.slice(0, 10), start: iso.slice(11, 16) }; }
-
-  // Satu baris Shopee → sesi dashboard (id sama dengan pola input manual: s-TANGGAL-JJMM, supaya menyatu dengan data yang sudah ada).
-  function petakan(r) {
-    if (!r || typeof r !== "object") return null;
-    const ms = keMs(r.startTime); if (ms == null) return null;
-    const w = wib(ms);
-    const s = { id: "s-" + w.date + "-" + w.start.replace(":", ""), date: w.date, start: w.start };
-    if (typeof r.title === "string" && r.title.trim()) s.title = r.title.trim().slice(0, 160);
-    const put = (k, v) => { if (v != null) s[k] = v; };
-    put("dur", durDetik(r.duration));
-    put("penonton", num(r.viewers));
-    put("ditonton", num(r.views));
-    put("puncak", num(r.peakViewers));
-    put("avg", avgDetik(r.avgViewsDuration));
-    put("klik", num(r.productClicks));
-    put("atc", num(r.atc));
-    put("pesanan", num(r.placedOrders));
-    put("jual", num(r.placedSales));
-    put("follow", num(r.followersGrowth));
-    put("suka", num(r.likes));
-    put("komen", num(r.comments));
-    if (s.klik != null && s.ditonton) s.ctr = Math.round((s.klik / s.ditonton) * 1000) / 10;
-    s.shopeeId = String(r.sessionId == null ? "" : r.sessionId).slice(0, 40);
-    return s;
-  }
-  function petakanRespons(j) {
+  // Pemetaan kolom ada di server (web/api/_petakan.js). Ekstensi hanya mengambil data MENTAH lalu mengirimnya.
+  // Alamat & parameter juga datang dari server (resep, GET /api/resep); di bawah ini cadangan kalau resep belum terambil.
+  const RESEP_BAWAAN = { versi: 0, sesi: { path: ENDPOINT, varian: ["?page=1&pageSize=20", "?page=1&pageSize=20&name=&orderBy=startTime&sort=desc"] }, off: { path: "/api/mydata/v2/marketing/off-platform/traffic-reporting/channel-metric/" } };
+  const pakaiResep = (r) => ({ sesi: { ...RESEP_BAWAAN.sesi, ...((r && r.sesi) || {}) }, off: { ...RESEP_BAWAAN.off, ...((r && r.off) || {}) }, versi: (r && r.versi) || 0 });
+  const amanPath = (p) => (typeof p === "string" && /^\/api\/[A-Za-z0-9/_.-]+$/.test(p) ? p : null);
+  const amanQuery = (q) => (typeof q === "string" && /^\?[A-Za-z0-9=&_.-]*$/.test(q) ? q : null);
+  function cekRespons(j, butuh) {
     if (!j || typeof j !== "object") throw new Error("Respons Shopee bukan JSON.");
     if (j.code != null && j.code !== 0) throw new Error("Shopee menolak (code " + j.code + (j.msg ? ": " + String(j.msg).slice(0, 80) : "") + "). Login Seller Centre mungkin kedaluwarsa.");
-    const list = j.data && Array.isArray(j.data.list) ? j.data.list : null;
-    if (!list) throw new Error("Bentuk respons tidak dikenali (tidak ada data.list).");
-    const sh = list.map(petakan).filter(Boolean);
-    return { sh, total: num(j.data.total), dibaca: list.length };
+    if (butuh && !butuh(j)) throw new Error("Bentuk respons tidak dikenali.");
+    return j;
   }
 
-  const rp = (n) => (n == null ? "—" : "Rp" + Math.round(n).toLocaleString("id-ID"));
-  const jamDur = (d) => (d == null ? "—" : Math.floor(d / 3600) + ":" + String(Math.floor((d % 3600) / 60)).padStart(2, "0") + ":" + String(d % 60).padStart(2, "0"));
-  // Baris pratinjau yang dibaca manusia, untuk dicocokkan dengan Seller Centre.
-  function ringkas(s) {
-    return { judul: s.date + " · " + s.start + " WIB" + (s.title ? " · " + s.title : ""),
-      isi: "durasi " + jamDur(s.dur) + " · penonton " + (s.penonton == null ? "—" : s.penonton) + " · ditonton " + (s.ditonton == null ? "—" : s.ditonton) + " · puncak " + (s.puncak == null ? "—" : s.puncak) + " · rata-rata tonton " + (s.avg == null ? "—" : s.avg + " dtk") + " · pesanan " + (s.pesanan == null ? "—" : s.pesanan) + " · penjualan " + rp(s.jual) };
-  }
-
-  // Tarik halaman pertama (20 sesi terbaru). Dicoba tanpa parameter urutan dulu; kalau ditolak, dengan urutan terbaru.
-  async function tarik(fetchFn, origin) {
-    const varian = ["?page=1&pageSize=20", "?page=1&pageSize=20&name=&orderBy=startTime&sort=desc"];
+  // Tarik halaman pertama daftar sesi (data MENTAH). Dicoba varian query dari resep berurutan.
+  async function tarik(fetchFn, origin, resep) {
+    const R = pakaiResep(resep), path = amanPath(R.sesi.path) || ENDPOINT;
+    const varian = (R.sesi.varian || []).map(amanQuery).filter(Boolean);
     let galat = null;
-    for (const q of varian) {
+    for (const q of varian.length ? varian : RESEP_BAWAAN.sesi.varian) {
       try {
-        const res = await fetchFn((origin || "") + ENDPOINT + q, { credentials: "include", headers: { accept: "application/json" } });
+        const res = await fetchFn((origin || "") + path + q, { credentials: "include", headers: { accept: "application/json" } });
         if (res.status === 401 || res.status === 403) throw new Error("Login Seller Centre habis (HTTP " + res.status + "). Login ulang lalu coba lagi.");
         if (!res.ok) throw new Error("HTTP " + res.status);
-        return petakanRespons(await res.json());
+        const j = cekRespons(await res.json(), (x) => x.data && Array.isArray(x.data.list));
+        return { mentah: j, dibaca: j.data.list.length };
       } catch (e) { galat = e; if (/Login/.test(e.message)) break; }
     }
     throw galat || new Error("Gagal menarik sesi.");
   }
-
-
 
   /* ---------- Laporan Pengunjung dari Platform Eksternal (kode pelacakan / UTM) ----------
      Endpoint: GET /api/mydata/v2/marketing/off-platform/traffic-reporting/channel-metric/ (hasil intip 9 Okt 2026).
@@ -85,9 +41,9 @@
      lewat performance.getEntriesByType("resource") ketika host membuka halaman Laporan Pengunjung dari Platform Eksternal. */
   const OFF_PATH = "/api/mydata/v2/marketing/off-platform/traffic-reporting/channel-metric/";
   // url (string) → templat { period, terminal, channel, ver, fmt } atau null. SPC_CDS sengaja TIDAK disimpan.
-  function pelajariOff(url) {
+  function pelajariOff(url, offPath) {
     try {
-      const u = new URL(url, "https://seller.shopee.co.id"); if (u.pathname !== OFF_PATH) return null;
+      const u = new URL(url, "https://seller.shopee.co.id"); if (u.pathname !== (offPath || OFF_PATH)) return null;
       const g = (k) => u.searchParams.get(k);
       const s = g("start_time"); if (!s) return null;
       const fmt = /^\d{10}$/.test(s) ? "s" : /^\d{13}$/.test(s) ? "ms" : /^\d{4}-\d{2}-\d{2}$/.test(s) ? "iso" : null;
@@ -103,7 +59,7 @@
     const ms = Date.parse(dateIso + "T" + (akhir ? "23:59:59" : "00:00:00") + "+07:00");
     return String(fmt === "ms" ? ms : Math.floor(ms / 1000));
   }
-  function bangunUrlOff(tpl, cds, dariIso, sampaiIso, origin) {
+  function bangunUrlOff(tpl, cds, dariIso, sampaiIso, origin, offPath) {
     if (!tpl) throw new Error("Ekstensi belum mempelajari parameternya. Buka halaman Laporan Pengunjung dari Platform Eksternal di tab ini sekali (muat ulang), lalu klik aku lagi.");
     if (!cds) throw new Error("Kode sesi Seller Centre (SPC_CDS) belum terbaca di halaman ini. Muat ulang halaman Seller Centre lalu coba lagi.");
     const p = new URLSearchParams();
@@ -112,35 +68,15 @@
     if (tpl.period != null) p.set("period", tpl.period);
     if (tpl.terminal != null) p.set("terminal", tpl.terminal);
     if (tpl.channel != null) p.set("channel", tpl.channel);
-    return (origin || "") + OFF_PATH + "?" + p.toString();
+    return (origin || "") + (amanPath(offPath) || OFF_PATH) + "?" + p.toString();
   }
-  // Baris laporan per hari per kampanye → baris dashboard. date bisa detik atau milidetik.
-  function petakanOff(j) {
-    if (!j || typeof j !== "object") throw new Error("Respons Shopee bukan JSON.");
-    if (j.code != null && j.code !== 0) throw new Error("Shopee menolak (code " + j.code + (j.msg ? ": " + String(j.msg).slice(0, 80) : "") + ").");
-    const r = j.result || {};
-    const src = Array.isArray(r.channel_performance_by_day) && r.channel_performance_by_day.length ? r.channel_performance_by_day : null;
-    if (!src) { if (Array.isArray(r.channel_performance_by_day)) return { off: [], dibaca: 0 }; throw new Error("Bentuk respons tidak dikenali (tidak ada channel_performance_by_day)."); }
-    const off = [];
-    for (const x of src) {
-      if (!x || !x.campaign_description) continue;
-      const ms = keMs(x.date); if (ms == null) continue;
-      const tgl = wib(ms).date, n = (k) => { const v = num(x[k]); return v == null ? 0 : v; };
-      off.push({ date: tgl, campaign: String(x.campaign_description).slice(0, 120), channel: String(x.channel || "").slice(0, 30),
-        visits: n("visits"), visitors: n("visitors"), atcUsers: n("add_to_cart_users"), atcUnits: n("add_to_cart_units"), atcValue: n("add_to_cart_value"),
-        orders: n("orders"), sales: n("sales"), buyers: n("buyers"), newBuyers: n("new_buyers"), units: n("units") });
-    }
-    return { off, dibaca: src.length };
-  }
-  function ringkasOff(o) {
-    return { judul: o.date + " · " + o.campaign + (o.channel ? " · " + o.channel : ""), isi: "kunjungan " + o.visits + " · pengunjung " + o.visitors + " · masuk keranjang " + o.atcUsers + " orang (" + rp(o.atcValue) + ") · pesanan " + o.orders + " · penjualan " + rp(o.sales) };
-  }
-  async function tarikOff(fetchFn, tpl, cds, dariIso, sampaiIso, origin) {
-    const url = bangunUrlOff(tpl, cds, dariIso, sampaiIso, origin);
+  async function tarikOff(fetchFn, tpl, cds, dariIso, sampaiIso, origin, resep) {
+    const url = bangunUrlOff(tpl, cds, dariIso, sampaiIso, origin, pakaiResep(resep).off.path);
     const res = await fetchFn(url, { credentials: "include", headers: { accept: "application/json" } });
     if (res.status === 401 || res.status === 403) throw new Error("Login Seller Centre habis (HTTP " + res.status + "). Login ulang lalu coba lagi.");
     if (!res.ok) throw new Error("HTTP " + res.status);
-    return petakanOff(await res.json());
+    const j = cekRespons(await res.json(), (x) => x.result && Array.isArray(x.result.channel_performance_by_day));
+    return { mentah: j, dibaca: j.result.channel_performance_by_day.length };
   }
 
   /* ---------- pola jadwal otomatis (supaya tidak terbaca sebagai bot) ----------
@@ -196,7 +132,9 @@
     return (h >>> 0).toString(16);
   }
 
-  const api = { OFF_PATH, pelajariOff, cariCds, bangunUrlOff, petakanOff, ringkasOff, tarikOff, POLA, acak, jedaMenit, bolehTarik, sesudah, sidik, ENDPOINT, keMs, durDetik, avgDetik, petakan, petakanRespons, ringkas, tarik };
+  // Sidik jari data mentah: kirim otomatis hanya kalau isinya berubah.
+  function sidikMentah(x) { const s = JSON.stringify(x || null); let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16); }
+  const api = { OFF_PATH, RESEP_BAWAAN, pakaiResep, pelajariOff, cariCds, bangunUrlOff, tarikOff, POLA, acak, jedaMenit, bolehTarik, sesudah, sidik, sidikMentah, ENDPOINT, tarik };
   root.lmTarik = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
