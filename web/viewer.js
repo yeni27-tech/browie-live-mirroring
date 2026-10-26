@@ -32,7 +32,7 @@
     $("peran").innerHTML = admin ? '<span class="pill sh">Admin</span>' : "";
     $("btn-login").hidden = admin; $("btn-logout").hidden = !admin;
     const kosong = !(j.sh || []).length && !(j.ig || []).length;
-    $("fresh").textContent = kosong ? "Belum ada data" : (j.sh || []).length + " sesi Shopee · " + (j.ig || []).length + " live IG";
+    $("fresh").textContent = kosong ? "Belum ada data" : (j.sh || []).filter((x) => x.platform !== "tiktok").length + " sesi Shopee · " + (j.sh || []).filter((x) => x.platform === "tiktok").length + " sesi TikTok · " + (j.ig || []).length + " live IG";
     $("alert").hidden = !kosong;
     if (kosong) $("alert").textContent = admin ? "Belum ada data. Impor screenshot, tambah sesi Shopee, atau muat data awal 6–7 Okt." : "Belum ada data. Admin belum mengisi sesi.";
     const payload = { sh: j.sh || [], ig: j.ig || [], jev: j.jev || {}, aksi: j.aksi || {}, jevSiap: j.jevSiap, klik: j.klik || {}, off: j.off || [], linkUrl: j.linkUrl };

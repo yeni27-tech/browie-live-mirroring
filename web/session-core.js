@@ -12,6 +12,9 @@ const LM_SUMBER_LUAR = ["Lainnya"]; // penonton yang datang dari luar Shopee (li
 const LM_PAIR_MIRIP_DTK = 600;     // 2 kandidat selisih durasinya < 10 mnt → wajib dipilih manual
 const LM_PAIR_RAGU_DTK = 900;      // pasangan otomatis dengan selisih durasi > 15 mnt → "perlu dicek"
 
+// Platform jualan sesi: "tiktok" (sesi live TikTok, diisi manual/screenshot) atau Shopee (bawaan).
+function lmPlat(sh) { return sh && sh.platform === "tiktok" ? "tiktok" : "shopee"; }
+function lmPl(sesiAtauSh) { const sh = sesiAtauSh && ("sh" in sesiAtauSh || "ig" in sesiAtauSh) ? sesiAtauSh.sh : sesiAtauSh; return lmPlat(sh) === "tiktok" ? "TikTok" : "Shopee"; }
 function lmNum(v) { return typeof v === "number" && isFinite(v) ? v : null; }
 function lmMenit(start) { const m = /^(\d{1,2}):(\d{2})$/.exec(start || ""); return m ? +m[1] * 60 + +m[2] : null; }
 
@@ -163,10 +166,10 @@ function lmRangkum(sesi, semua) {
 
   if (sh && lmNum(sh.penonton) != null) {
     const b = banding(sh.penonton, (x) => (x.sh ? lmNum(x.sh.penonton) : null)); skor.push(nada(b));
-    let t = `Penonton Shopee ${f(sh.penonton)}${bandTeks(b)}.`;
-    if (a.luar != null) t += ` ${f(Math.round((a.dalam / a.shopee) * 100))}% dari dalam Shopee, ${f(Math.round((a.luar / a.shopee) * 100))}% dari luar (termasuk IG).`;
+    let t = `Penonton ${lmPl(sh)} ${f(sh.penonton)}${bandTeks(b)}.`;
+    if (a.luar != null) t += ` ${f(Math.round((a.dalam / a.shopee) * 100))}% dari dalam ${lmPl(sh)}, ${f(Math.round((a.luar / a.shopee) * 100))}% dari luar (termasuk IG).`;
     poin.push({ teks: t, nada: nada(b) });
-  } else if (sh) poin.push({ teks: "Penonton Shopee belum diisi.", nada: "kurang" });
+  } else if (sh) poin.push({ teks: "Penonton " + lmPl(sh) + " belum diisi.", nada: "kurang" });
 
   if (ig && lmNum(ig.viewers) != null) {
     const b = banding(ig.viewers, (x) => (x.ig ? lmNum(x.ig.viewers) : null));
@@ -191,7 +194,7 @@ function lmRangkum(sesi, semua) {
       const b = banding(fo, (x) => (x.sh ? lmNum(x.sh.follow) : null)); skor.push(nada(b));
       poin.push({ teks: `Follow baru toko ${f(fo)}${pn ? " (" + f((fo / pn) * 100) + " per 100 penonton)" : ""}${bandTeks(b)}.`, nada: nada(b) });
     } else poin.push({ teks: "Follow baru belum diisi — angka utama tujuan mirroring.", nada: "kurang" });
-  } else poin.push({ teks: "Data Shopee sesi ini belum ada.", nada: "kurang" });
+  } else poin.push({ teks: "Data Shopee/TikTok sesi ini belum ada.", nada: "kurang" });
 
   const naik = skor.filter((x) => x === "naik").length, turun = skor.filter((x) => x === "turun").length;
   const dinilai = skor.length >= 2 && lain.filter((x) => x.sh).length >= 3;
@@ -268,10 +271,10 @@ function lmBelumLengkap(list, hariIni) {
     if (s.sh) {
       if (!s.ig) kurang.push("data Instagram");
       if (lmNum(s.sh.follow) == null) kurang.push("follow baru");
-      if (!s.sh.sumber || !Object.keys(s.sh.sumber).length) kurang.push("asal penonton");
+      if (lmPlat(s.sh) !== "tiktok" && (!s.sh.sumber || !Object.keys(s.sh.sumber).length)) kurang.push("asal penonton");
       if (lmNum(s.sh.pesanan) > 0 && !lmItems(s).length) kurang.push("produk terjual");
       if (!s.start) kurang.push("jam mulai");
-    } else if (s.ig) kurang.push(s.pair === "pilih" ? "pasangan sesi Shopee (pilih manual)" : "data Shopee");
+    } else if (s.ig) kurang.push(s.pair === "pilih" ? "pasangan sesi Shopee/TikTok (pilih manual)" : "data Shopee/TikTok");
     if (kurang.length) out.push({ id: s.id, date: s.date, start: s.start || "", kurang });
   }
   return out.sort(lmUrut);
@@ -394,24 +397,24 @@ function lmTicks(max, n) {
    LM_MET: kunci metrik → [label, pengambil nilai, format "n"|"rp"|"dtk"]. list diurutkan TERBARU dulu (lmGabung). */
 const LM_MET = {
   total: ["Total penonton", (s) => lmAsal(s).total, "n"],
-  luar: ["Penonton Shopee dari luar", (s) => lmAsal(s).luar, "n"],
+  luar: ["Penonton Shopee/TikTok dari luar", (s) => lmAsal(s).luar, "n"],
   ig: ["Penonton Instagram", (s) => (s.ig ? lmNum(s.ig.viewers) : null), "n"],
   ig_puncak: ["Puncak penonton IG", (s) => (s.ig ? lmNum(s.ig.puncak) : null), "n"],
   ig_komen: ["Komentar IG", (s) => (s.ig ? lmNum(s.ig.komen) : null), "n"],
   ig_share: ["Dibagikan IG", (s) => (s.ig ? lmNum(s.ig.share) : null), "n"],
   ig_engaged: ["Akun berinteraksi IG", (s) => (s.ig ? lmNum(s.ig.engaged) : null), "n"],
-  penonton: ["Penonton Shopee", (s) => (s.sh ? lmNum(s.sh.penonton) : null), "n"],
-  puncak: ["Puncak penonton Shopee", (s) => (s.sh ? lmNum(s.sh.puncak) : null), "n"],
-  ditonton: ["Ditonton Shopee", (s) => (s.sh ? lmNum(s.sh.ditonton) : null), "n"],
-  avg: ["Rata-rata nonton Shopee", (s) => (s.sh ? lmNum(s.sh.avg) : null), "dtk"],
-  komen: ["Komentar Shopee", (s) => (s.sh ? lmNum(s.sh.komen) : null), "n"],
-  bagi: ["Dibagikan Shopee", (s) => (s.sh ? lmNum(s.sh.bagi) : null), "n"],
-  suka: ["Suka Shopee", (s) => (s.sh ? lmNum(s.sh.suka) : null), "n"],
+  penonton: ["Penonton Shopee/TikTok", (s) => (s.sh ? lmNum(s.sh.penonton) : null), "n"],
+  puncak: ["Puncak penonton Shopee/TikTok", (s) => (s.sh ? lmNum(s.sh.puncak) : null), "n"],
+  ditonton: ["Ditonton Shopee/TikTok", (s) => (s.sh ? lmNum(s.sh.ditonton) : null), "n"],
+  avg: ["Rata-rata nonton Shopee/TikTok", (s) => (s.sh ? lmNum(s.sh.avg) : null), "dtk"],
+  komen: ["Komentar Shopee/TikTok", (s) => (s.sh ? lmNum(s.sh.komen) : null), "n"],
+  bagi: ["Dibagikan Shopee/TikTok", (s) => (s.sh ? lmNum(s.sh.bagi) : null), "n"],
+  suka: ["Suka Shopee/TikTok", (s) => (s.sh ? lmNum(s.sh.suka) : null), "n"],
   klik: ["Klik produk", (s) => (s.sh ? lmNum(s.sh.klik) : null), "n"],
   atc: ["Masuk keranjang", (s) => (s.sh ? lmNum(s.sh.atc) : null), "n"],
   pesanan: ["Pesanan", (s) => (s.sh ? lmNum(s.sh.pesanan) : null), "n"],
   jual: ["Penjualan", (s) => (s.sh ? lmNum(s.sh.jual) : null), "rp"],
-  follow: ["Follow baru Shopee", (s) => (s.sh ? lmNum(s.sh.follow) : null), "n"],
+  follow: ["Follow baru Shopee/TikTok", (s) => (s.sh ? lmNum(s.sh.follow) : null), "n"],
 };
 function lmNilai(s, k) { const m = LM_MET[k]; return m ? m[1](s) : null; }
 const LM_BANDING = [["sebelum", "Sesi sebelumnya"], ["rata3", "Rata-rata 3 sesi sebelumnya"], ["rata7", "Rata-rata 7 sesi sebelumnya"], ["median", "Median semua sesi lain"], ["jam", "Sesi sebelumnya di jam yang sama"]];
@@ -434,4 +437,4 @@ function lmPembanding(list, s, k, mode) {
   return { nilai, ref, n: ref.length, persen };
 }
 
-if (typeof module !== "undefined") module.exports = { lmPreset, lmDaftarMinggu, lmLabelRentang, lmBandingRange, lmHarian, lmTicks, lmSenin, lmAkhirBulan, lmSelisihHari, LM_SUMBER, LM_MASALAH, LM_BLOK, lmFakta, lmBelumLengkap, lmPeriode, lmRekap, lmJamTerbaik, lmTglTambah, lmPairIg, lmGabung, lmAsal, lmKlikSesi, lmKlikTotal, lmNorm, lmSerupa, lmOffSesi, lmMirrorVs, lmKunciKlik, lmMenit, lmItems, lmProdukTerlaris, lmRangkum, lmMedian, LM_MET, lmNilai, LM_BANDING, lmBlokJam, lmPembanding };
+if (typeof module !== "undefined") module.exports = { lmPlat, lmPl, lmPreset, lmDaftarMinggu, lmLabelRentang, lmBandingRange, lmHarian, lmTicks, lmSenin, lmAkhirBulan, lmSelisihHari, LM_SUMBER, LM_MASALAH, LM_BLOK, lmFakta, lmBelumLengkap, lmPeriode, lmRekap, lmJamTerbaik, lmTglTambah, lmPairIg, lmGabung, lmAsal, lmKlikSesi, lmKlikTotal, lmNorm, lmSerupa, lmOffSesi, lmMirrorVs, lmKunciKlik, lmMenit, lmItems, lmProdukTerlaris, lmRangkum, lmMedian, LM_MET, lmNilai, LM_BANDING, lmBlokJam, lmPembanding };

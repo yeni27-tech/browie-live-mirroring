@@ -43,8 +43,9 @@
   <section id="admin" hidden>
     <button class="adm-kembali" id="adm-kembali" hidden>← Kembali ke halaman sebelumnya</button>
     <div class="adm-bar">
-      <button class="primary" id="adm-ig">📸 Impor screenshot (IG / Shopee)</button>
+      <button class="primary" id="adm-ig">📸 Impor screenshot (IG / Shopee / TikTok)</button>
       <button id="adm-sh">+ Sesi Shopee</button>
+      <button id="adm-tt">+ Sesi TikTok</button>
       <button id="adm-kelola-btn">🗂 Kelola data</button>
       <button id="adm-log-btn">Riwayat perubahan</button>
       <button id="adm-set-btn">⚙️ Pengaturan</button>
@@ -81,9 +82,9 @@
         <p class="msg" id="set-jev-msg"></p>
       </div>
       <div class="set-blok">
-        <h3>Link tujuan Shopee & link penghitung untuk live IG</h3>
-        <p class="msg">Tempel link berlabel (kode pelacakan) Shopee untuk sesi berikutnya, lalu Simpan. Setiap kali link Shopee diganti, dashboard membuat <b>link penghitung baru dengan kode acak</b> di alamat terpisah dari dashboard. Pasang link penghitung itu di live IG.</p>
-        <div class="row"><input type="text" id="set-shopee" placeholder="https://shopee.co.id/..." style="flex:1 1 280px"><button class="primary" id="set-shopee-simpan">Simpan</button></div>
+        <h3>Link tujuan (Shopee atau live TikTok) & link penghitung untuk live IG</h3>
+        <p class="msg">Pilih ke mana penonton IG dikirim sesi berikutnya: <b>toko Shopee</b> (tempel link berlabel / kode pelacakan) atau <b>live TikTok</b> @browie_official. Setiap kali link tujuan diganti, dashboard membuat <b>link penghitung baru dengan kode acak</b> di alamat terpisah dari dashboard. Pasang link penghitung itu di live IG. Tujuan TikTok langsung membuka aplikasi TikTok (Android langsung; iPhone kadang muncul konfirmasi "Buka di TikTok?" dari iOS).</p>
+        <div class="row"><select id="set-tujuan" aria-label="Jenis tujuan"><option value="shopee">🛒 Toko Shopee</option><option value="tiktok">🎵 Live TikTok</option></select><input type="text" id="set-shopee" placeholder="https://shopee.co.id/..." style="flex:1 1 280px"><button class="primary" id="set-shopee-simpan">Simpan</button></div>
         <p class="msg" id="set-shopee-msg"></p>
         <div id="set-link"></div>
       </div>

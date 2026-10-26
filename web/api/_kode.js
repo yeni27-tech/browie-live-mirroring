@@ -9,7 +9,14 @@ import crypto from "node:crypto";
 export const KODE_RE = /^[A-Za-z0-9]{8}$/;
 const HURUF = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"; // tanpa 0/O/1/l/I supaya tidak salah baca
 export function buatKode() { const b = crypto.randomBytes(8); let s = ""; for (const x of b) s += HURUF[x % HURUF.length]; return s; }
-export function kampanyeDari(url) { try { return new URL(url).searchParams.get("utm_campaign") || ""; } catch { return ""; } }
+// Tujuan link boleh toko Shopee ATAU live TikTok (dipilih per sesi, 26 Okt 2026).
+export const TUJUAN_RE = /^https:\/\/(s\.)?shopee\.co\.id\/\S*$|^https:\/\/shope\.ee\/\S+$|^https:\/\/(www\.|m\.|vt\.|vm\.)?tiktok\.com\/\S+$/;
+export const TUJUAN_PESAN = "Link tujuan harus link Shopee (https://shopee.co.id/ , https://s.shopee.co.id/ , https://shope.ee/) atau link TikTok (https://www.tiktok.com/@akun/live).";
+export const isTiktok = (url) => /^https:\/\/(www\.|m\.|vt\.|vm\.)?tiktok\.com\//.test(url || "");
+export function kampanyeDari(url) {
+  if (isTiktok(url)) { const m = String(url).match(/tiktok\.com\/(@[\w.]+)/); return "TikTok LIVE" + (m ? " " + m[1] : ""); }
+  try { return new URL(url).searchParams.get("utm_campaign") || ""; } catch { return ""; }
+}
 export const LINK_BASE = () => (process.env.LINK_BASE || "https://brw-link.vercel.app").replace(/\/+$/, "");
 // Perintah Upstash untuk menutup kode lama (kalau ada) dan mengaktifkan kode baru untuk url.
 export function cmdsKodeBaru(url, lama, now) {

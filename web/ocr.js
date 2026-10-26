@@ -166,11 +166,54 @@ function parseShopeeText(text, now) {
   return out;
 }
 
+// Ringkasan LIVE TikTok (aplikasi: LIVE Center / setelah live selesai; web: TikTok Shop / LIVE Analytics). Label Inggris & Indonesia.
+// Belum dikalibrasi dengan screenshot asli: hasilnya selalu ditinjau di kartu sebelum disimpan.
+const TT_LABEL = [
+  ["avg", /(avg\.?|average)\s+watch\s+time|rata-?rata\s+(durasi|waktu)\s+(tonton|menonton)/i], ["puncak", /peak\s+viewers?|top\s+viewer\s+count|penonton\s+(tertinggi|puncak|terbanyak)/i],
+  ["follow", /new\s+followers?|pengikut\s+baru/i], ["produk", /items?\s+sold|produk\s+terjual/i], ["klik", /product\s+clicks?|klik\s+produk/i],
+  ["ctr", /\bctr\b|click-?through\s+rate/i], ["pesanan", /(sku\s+)?orders?\b|\bpesanan\b/i], ["pembeli", /\bbuyers?\b|\bpembeli\b|customers?/i],
+  ["jual", /\bgmv\b|gross\s+merchandise|\brevenue\b|penjualan/i], ["ditonton", /\b(total\s+)?views\b|tayangan|ditonton/i],
+  ["penonton", /\bviewers?\b|\bpenonton\b/i], ["suka", /\blikes?\b|\bsuka\b/i], ["komen", /\bcomments?\b|\bkomentar\b/i], ["bagi", /\bshares?\b|dibagikan/i],
+];
+const TT_SIMPAN = ["penonton", "ditonton", "puncak", "avg", "klik", "ctr", "pesanan", "pembeli", "produk", "jual", "follow", "suka", "komen", "bagi"];
+function ttAngka(t) {
+  t = String(t || "").replace(/[()©|]/g, "").trim();
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) return igDur(t);
+  let m = t.match(/^(\d+)\s*m(in)?\s*(\d+)\s*s$/i); if (m) return +m[1] * 60 + +m[3];
+  m = t.match(/^(?:Rp\.?)?\s*([\d.,]+)\s*(rb|jt|K|M)?%?$/); if (!m) return null; // "m" kecil = menit, bukan juta
+  let n = Number(m[1].replace(/[.,](?=\d{3}\b)/g, "").replace(",", ".")); if (isNaN(n)) return null;
+  if (m[2] === "K" || m[2] === "rb") n *= 1e3; else if (m[2] === "M" || m[2] === "jt") n *= 1e6;
+  return Math.round(n * 100) / 100;
+}
+function parseTiktokText(text) {
+  const lines = String(text || "").replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean);
+  const out = { date: "", start: "", dur: null }, ragu = [];
+  let m = lines.join(" ").match(/(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})/); if (m) out.date = m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0");
+  m = lines.join(" ").match(/(?:duration|durasi)\D{0,4}(\d{1,2}:\d{2}(?::\d{2})?|\d+\s*h\s*\d+\s*m(?:in)?)/i);
+  if (m) { const h = m[1].match(/(\d+)\s*h\s*(\d+)/i); out.dur = h ? +h[1] * 3600 + +h[2] * 60 : igDur(m[1]); }
+  const ambil = (sisa) => { const mm = sisa.match(/(\d+)\s*m(?:in)?\s*(\d+)\s*s\b/i); if (mm) return +mm[1] * 60 + +mm[2]; for (const w of sisa.split(/\s+/)) { const v = ttAngka(w); if (v != null) return v; } return null; };
+  for (let i = 0; i < lines.length; i++) {
+    for (const [k, re] of TT_LABEL) {
+      if (out[k] != null) continue;
+      const g = lines[i].match(re); if (!g) continue;
+      let v = ambil(lines[i].slice(g.index + g[0].length));
+      if (v == null && lines[i + 1]) v = ambil(lines[i + 1]);
+      if (v == null && lines[i - 1]) { v = ambil(lines[i - 1]); if (v != null) ragu.push(k); }
+      if (v != null) out[k] = v;
+      break;
+    }
+  }
+  out.ragu = [...new Set(ragu)];
+  out.kurang = ["date", "start", "dur", ...TT_SIMPAN].filter((k) => out[k] == null || out[k] === "");
+  return out;
+}
+
 // Kenali jenis screenshot dari teksnya.
 function jenisScreenshot(text) {
   const t = String(text || "");
   if (/peak\s+concurrent|accounts\s+engaged|insights/i.test(t)) return "ig";
   if (/tinjauan|kunjungan|konversi|promosi|ronde/i.test(t)) return "shopee";
+  if (/tiktok|live\s+(center|summary|analytics)|ringkasan\s+live|gmv|new\s+followers|diamonds?|gifters?/i.test(t)) return "tiktok";
   return null;
 }
 
@@ -203,7 +246,8 @@ async function bacaGambar(file) {
   const jenis = jenisScreenshot(data.text);
   if (jenis === "shopee") return { jenis, data: parseShopeeText(data.text, new Date()) };
   if (jenis === "ig") return { jenis, data: parseIgText(data.text, new Date()) };
+  if (jenis === "tiktok") return { jenis, data: parseTiktokText(data.text) };
   return { jenis: null, data: null };
 }
 
-if (typeof module !== "undefined") module.exports = { parseIgText, parseShopeeText, jenisScreenshot };
+if (typeof module !== "undefined") module.exports = { parseIgText, parseShopeeText, parseTiktokText, jenisScreenshot };

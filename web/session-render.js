@@ -74,22 +74,22 @@
 
   const PAIR_TEKS = { auto: ["g", "Dipasangkan otomatis"], pilih: ["g", "Dipasangkan manual"], ragu: ["w", "Pasangan perlu dicek"] };
   function pills(s) {
-    let h = "";
-    h += s.sh ? '<span class="pill sh">Shopee</span>' : '<span class="pill n">Shopee belum ada</span>';
+    let h = ""; const P = lmPl(s);
+    h += s.sh ? `<span class="pill sh">${P === "TikTok" ? "🎵 TikTok" : "Shopee"}</span>` : '<span class="pill n">Shopee/TikTok belum ada</span>';
     h += s.ig ? '<span class="pill ig">Instagram</span>' : '<span class="pill n">IG belum ada</span>';
     if (s.ig && s.sh && PAIR_TEKS[s.pair]) h += `<span class="pill ${PAIR_TEKS[s.pair][0]}">${PAIR_TEKS[s.pair][1]}</span>`;
-    if (s.ig && !s.sh && s.pair === "pilih") h += '<span class="pill w">Pilih pasangan Shopee</span>';
+    if (s.ig && !s.sh && s.pair === "pilih") h += '<span class="pill w">Pilih pasangan Shopee/TikTok</span>';
     return h;
   }
 
   /* ---------- 1. total penonton 3 asal ---------- */
   function heroHtml(s, klik) {
     const a = lmAsal(s);
-    const seg = [];
+    const seg = [], P = lmPl(s);
     if (a.ig != null) seg.push(["ig", "Instagram", a.ig]);
     if (a.shopee != null) {
-      if (a.luar != null) { seg.push(["luar", "Shopee dari luar", a.luar]); seg.push(["dalam", "Shopee dari dalam", a.dalam]); }
-      else seg.push(["unk", "Shopee (asal belum diisi)", a.shopee]);
+      if (a.luar != null) { seg.push(["luar", P + " dari luar", a.luar]); seg.push(["dalam", P + " dari dalam", a.dalam]); }
+      else seg.push(["unk", P + (P === "TikTok" ? "" : " (asal belum diisi)"), a.shopee]);
     }
     const tot = a.total || 0;
     const bar = seg.map(([c, l, n]) => `<i class="seg-${c}" style="flex:${Math.max(n, 0)} 0 0" data-tip="${esc(l)}: ${nf(n)} (${pc(n, tot)} dari total)"></i>`).join("");
@@ -100,25 +100,26 @@
         <div class="lm-hero-meta"><div class="lm-when">${dPanj(s.date)}${s.start ? " · " + esc(s.start) : ""}</div><div class="msg">${esc(judul(s.title || (s.ig && s.ig.title)))}</div><div class="lm-pills">${pills(s)}</div></div></div>
       ${tot ? `<div class="lm-stack" role="img" aria-label="Pembagian penonton per asal">${bar}</div>` : ""}
       <div class="lm-legend">${leg || '<span class="msg">Belum ada angka penonton.</span>'}</div>
-      ${info(INFO.hero)}<p class="note">"Dari luar" = asal <b>Lainnya</b> di dashboard live Shopee: link IG, WhatsApp, dan sumber luar Shopee lain. "Dari dalam" = Beranda, Rekomendasi, Video, Riwayat pesanan, Tab Live.${k != null ? ` Klik link penghitung IG selama sesi ini: <b>${nf(k)}</b>.` : ""} Orang yang sama bisa terhitung di IG dan Shopee.</p>
+      ${info(INFO.hero)}<p class="note">${P === "TikTok" ? `Sesi TikTok: penonton TikTok tidak dipecah dalam/luar.${k != null ? ` Klik link penghitung IG selama sesi ini: <b>${nf(k)}</b>.` : ""} Orang yang sama bisa terhitung di IG dan TikTok.` : ""}${P === "TikTok" ? "" : `"Dari luar" = asal <b>Lainnya</b> di dashboard live Shopee: link IG, WhatsApp, dan sumber luar Shopee lain. "Dari dalam" = Beranda, Rekomendasi, Video, Riwayat pesanan, Tab Live.${k != null ? ` Klik link penghitung IG selama sesi ini: <b>${nf(k)}</b>.` : ""} Orang yang sama bisa terhitung di IG dan Shopee.`}</p>
     </div>`;
   }
 
   /* ---------- 2. IG vs Shopee berdampingan ---------- */
   function vsHtml(s) {
+    const P = lmPl(s), IK = P === "TikTok" ? "🎵" : "🛒";
     const pair = [["Penonton", v(s.ig, "viewers"), v(s.sh, "penonton"), "ig", "penonton"], ["Puncak penonton", v(s.ig, "puncak"), v(s.sh, "puncak"), "ig_puncak", "puncak"],
       ["Komentar", v(s.ig, "komen"), v(s.sh, "komen"), "ig_komen", "komen"], ["Dibagikan", v(s.ig, "share"), v(s.sh, "bagi"), "ig_share", "bagi"]];
     const rows = pair.map(([l, a, b, ka, kb]) => {
-      const mx = Math.max(a || 0, b || 0, 1), tipA = `Instagram · ${l}: ${nf(a)}`, tipB = `Shopee · ${l}: ${nf(b)}${a != null && b != null && a + b ? " · " + pc(b, a + b) + " dari gabungan" : ""}`;
+      const mx = Math.max(a || 0, b || 0, 1), tipA = `Instagram · ${l}: ${nf(a)}`, tipB = `${P} · ${l}: ${nf(b)}${a != null && b != null && a + b ? " · " + pc(b, a + b) + " dari gabungan" : ""}`;
       return `<div class="bf"><div class="bf-l"><b>${a == null ? "—" : angka(s, ka)}</b><span class="bf-bar" data-tip="${esc(tipA)}"><i class="seg-ig" style="width:${((a || 0) / mx) * 100}%"></i></span></div>
         <div class="bf-k">${l}</div><div class="bf-r"><span class="bf-bar" data-tip="${esc(tipB)}"><i class="seg-dalam" style="width:${((b || 0) / mx) * 100}%"></i></span><b>${b == null ? "—" : angka(s, kb)}</b></div></div>`;
     }).join("");
     const fact = (l, val, k) => `<div><span>${l}</span><b>${k && lmNilai(s, k) != null ? angka(s, k) : val}</b></div>`;
-    return `<div class="panel"><h2>Instagram vs Shopee</h2>${info(INFO.vs)}
-      <div class="bf-head"><span class="ig-t">📸 Instagram${s.ig ? " · " + dur(v(s.ig, "dur")) : ""}</span><span></span><span class="sh-t">🛒 Shopee${s.sh ? " · " + dur(v(s.sh, "dur")) : ""}</span></div>
+    return `<div class="panel"><h2>Instagram vs ${P}</h2>${info(INFO.vs)}
+      <div class="bf-head"><span class="ig-t">📸 Instagram${s.ig ? " · " + dur(v(s.ig, "dur")) : ""}</span><span></span><span class="sh-t">${IK} ${P}${s.sh ? " · " + dur(v(s.sh, "dur")) : ""}</span></div>
       ${rows}
-      <div class="lm-facts">${fact("Akun berinteraksi IG", "—", "ig_engaged")}${fact("Ditonton Shopee", "—", "ditonton")}${fact("Rata-rata nonton Shopee", "—", "avg")}${fact("Penjualan Shopee", "—", "jual")}${fact("Follow baru Shopee", "—", "follow")}${fact("Suka Shopee", "—", "suka")}</div>
-      ${!s.ig ? '<p class="note">Data Instagram sesi ini belum diunggah.</p>' : ""}${!s.sh ? '<p class="note">Data Shopee sesi ini belum ada.</p>' : ""}</div>`;
+      <div class="lm-facts">${fact("Akun berinteraksi IG", "—", "ig_engaged")}${fact("Ditonton " + P, "—", "ditonton")}${fact("Rata-rata nonton " + P, "—", "avg")}${fact("Penjualan " + P, "—", "jual")}${fact("Follow baru " + P, "—", "follow")}${fact("Suka " + P, "—", "suka")}</div>
+      ${!s.ig ? '<p class="note">Data Instagram sesi ini belum diunggah.</p>' : ""}${!s.sh ? '<p class="note">Data Shopee/TikTok sesi ini belum ada.</p>' : ""}</div>`;
   }
 
   /* ---------- 3. corong ---------- */
@@ -128,26 +129,27 @@
     return `<div class="fs"><div class="fs-l">${label}${sub ? `<small>${sub}</small>` : ""}</div><div class="fs-bar" data-tip="${esc(tip)}"><i class="${cls}" style="width:${w}%"></i></div><b>${s && k && n != null ? angka(s, k) : nf(n)}</b></div>`;
   }
   function corongHtml(s, klik) {
-    const a = lmAsal(s), k = lmKlikSesi(s, klik);
+    const P = lmPl(s), a = lmAsal(s), k = lmKlikSesi(s, klik);
     const ig = a.ig, pn = v(s.sh, "penonton"), kl = v(s.sh, "klik"), atc = v(s.sh, "atc"), ps = v(s.sh, "pesanan"), fo = v(s.sh, "follow");
     const baseA = Math.max(ig || 0, k || 0, a.luar || 0, 1);
     return `<div class="panel"><h2>Corong</h2>${info(INFO.corong)}
-      <div class="fgrp"><h3>Dari Instagram ke Shopee</h3>
+      <div class="fgrp"><h3>Dari Instagram ke ${P}</h3>
         ${step("Penonton IG", ig, baseA, "", "seg-ig", s, "ig")}
-        ${step("Klik link ke Shopee", k, baseA, k == null ? "link penghitung belum aktif / jam sesi belum ada" : pc(k, ig) + " dari penonton IG", "seg-ig")}
-        ${step("Penonton Shopee dari luar", a.luar, baseA, a.luar == null ? "asal penonton belum diisi" : "termasuk dari IG", "seg-luar", s, "luar")}
+        ${step("Klik link ke " + P, k, baseA, k == null ? "link penghitung belum aktif / jam sesi belum ada" : pc(k, ig) + " dari penonton IG", "seg-ig")}
+        ${step("Penonton " + P + " dari luar", a.luar, baseA, a.luar == null ? "asal penonton belum diisi" : "termasuk dari IG", "seg-luar", s, "luar")}
       </div>
-      <div class="fgrp"><h3>Di Shopee <small>semua penonton, bukan hanya dari IG</small></h3>
-        ${step("Penonton Shopee", pn, pn || 1, "", "seg-dalam", s, "penonton")}
+      <div class="fgrp"><h3>Di ${P} <small>semua penonton, bukan hanya dari IG</small></h3>
+        ${step("Penonton " + P, pn, pn || 1, "", "seg-dalam", s, "penonton")}
         ${step("Klik produk", kl, pn || 1, pc(kl, pn) + " dari penonton", "seg-dalam", s, "klik")}
         ${step("Masuk keranjang", atc, pn || 1, kl ? pc(atc, kl) + " dari klik produk" : "", "seg-dalam", s, "atc")}
         ${step("Pesanan (co)", ps, pn || 1, atc ? pc(ps, atc) + " dari keranjang" : "", "seg-dalam", s, "pesanan")}
-        <div class="fs fs-side"><div class="fs-l">Follow baru toko<small>${fo != null && pn ? nf((fo / pn) * 100) + " per 100 penonton" : ""}</small></div><div></div><b>${fo != null ? angka(s, "follow") : "—"}</b></div>
+        <div class="fs fs-side"><div class="fs-l">Follow baru ${P === "TikTok" ? "akun" : "toko"}<small>${fo != null && pn ? nf((fo / pn) * 100) + " per 100 penonton" : ""}</small></div><div></div><b>${fo != null ? angka(s, "follow") : "—"}</b></div>
       </div></div>`;
   }
 
   /* ---------- 3b. dari Instagram menurut Shopee (kode pelacakan / UTM) ---------- */
   function offHtml(s, off) {
+    if (lmPl(s) === "TikTok") return ""; // kode pelacakan khusus Shopee
     const o = lmOffSesi(s, off);
     const head = `<h2>Dari Instagram menurut Shopee</h2>${info(INFO.off)}`;
     if (!o.adaData) return `<div class="panel">${head}<p class="msg">Belum ada data. Pasang link berlabel (kode pelacakan) dari Seller Centre di live IG, lalu ekstensi host menarik hasilnya. Hitungan datang dari Shopee sendiri, bukan perkiraan.</p></div>`;
@@ -169,6 +171,7 @@
   /* ---------- 4. asal penonton Shopee ---------- */
   function asalHtml(s) {
     const src = s.sh && s.sh.sumber;
+    if (lmPl(s) === "TikTok") return ""; // asal penonton versi Shopee; TikTok belum diisi
     if (!src || !Object.keys(src).length) return `<div class="panel"><h2>Asal penonton Shopee</h2>${info(INFO.asal)}<p class="msg">Belum diisi. Ada di dashboard live Shopee → Sumber Menonton Livestream.</p></div>`;
     const mx = Math.max(...LM_SUMBER.map((k) => v(src, k) || 0), 1);
     return `<div class="panel"><h2>Asal penonton Shopee</h2>${info(INFO.asal)}${LM_SUMBER.filter((k) => v(src, k) != null).map((k) =>
@@ -498,7 +501,8 @@
       ? `<button class="danger" data-lm-aksi="${aksi}" data-lm-ok="1">Ya, ${label.toLowerCase()}</button><button data-lm-batal="1">Batal</button>`
       : `<button class="${cls || ""}" data-lm-aksi="${aksi}">${label}</button>`;
     let h = '<div class="lm-admin"><span class="pill sh">Admin</span>';
-    h += s.sh ? b("ubah-sh", "✏️ Ubah Shopee") + b("hapus-sh", "Hapus Shopee", "danger") : b("tambah-sh", "+ Isi data Shopee");
+    const P = lmPl(s);
+    h += s.sh ? b("ubah-sh", "✏️ Ubah " + P) + b("hapus-sh", "Hapus " + P, "danger") : b("tambah-sh", "+ Isi data Shopee") + b("tambah-tt", "+ Isi data TikTok");
     h += s.ig ? b("ubah-ig", "✏️ Ubah IG") + b("hapus-ig", "Hapus IG", "danger") : b("tambah-ig", "+ Isi data IG");
     return h + "</div>";
   }
@@ -524,7 +528,7 @@
       else if (st.tab === "analisis") isi = filterHtml(st, list) + trenHtml(lr, s.id) + jamHtml(lr, st) + terlarisHtml(lr);
       else if (st.tab === "daftar") { const tb = tabelHtml(lr, st.page, data.klik, s.id); st.page = tb.page; isi = filterHtml(st, list) + tb.html; }
       else {
-        const opt = list.map((x) => `<option value="${esc(x.id)}" ${x.id === s.id ? "selected" : ""}>${esc(dPend(x.date) + (x.start ? " · " + x.start : "") + " — " + judul(x.title || (x.ig && x.ig.title)).slice(0, 40) + (x.sh && x.ig ? " (IG + Shopee)" : x.sh ? " (Shopee)" : " (IG)"))}</option>`).join("");
+        const opt = list.map((x) => `<option value="${esc(x.id)}" ${x.id === s.id ? "selected" : ""}>${esc(dPend(x.date) + (x.start ? " · " + x.start : "") + " — " + judul(x.title || (x.ig && x.ig.title)).slice(0, 40) + (x.sh && x.ig ? " (IG + " + lmPl(x) + ")" : x.sh ? " (" + lmPl(x) + ")" : " (IG)"))}</option>`).join("");
         isi = `<div class="lm-picker"><button data-lm-step="1" ${i >= list.length - 1 ? "disabled" : ""} aria-label="Sesi sebelumnya">◀</button>
           <select data-lm-pick aria-label="Pilih sesi">${opt}</select><button data-lm-step="-1" ${i <= 0 ? "disabled" : ""} aria-label="Sesi berikutnya">▶</button>
           <span class="msg">Sesi ${list.length - i} dari ${list.length}</span></div>

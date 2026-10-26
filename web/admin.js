@@ -30,7 +30,7 @@
   async function simulasi(aksi, b) {
     const d = JSON.parse(JSON.stringify(app.data)); d.log = d.log || []; d.peran = "admin";
     const log = (t) => d.log.unshift({ at: Date.now(), teks: t });
-    if (aksi === "simpan-sh") { const r = b.rec; if (!r.start) throw new Error("Jam mulai wajib diisi (dipakai untuk menghitung klik link IG)."); const id = r.id || "s-" + r.date + "-" + r.start.replace(":", ""); d.sh = d.sh.filter((x) => x.id !== id).concat({ ...r, id }); log((r.id ? "Koreksi" : "Tambah") + " sesi Shopee " + r.date + " " + r.start); }
+    if (aksi === "simpan-sh") { const r = b.rec; if (!r.start) throw new Error("Jam mulai wajib diisi (dipakai untuk menghitung klik link IG)."); const id = r.id || (r.platform === "tiktok" ? "t-" : "s-") + r.date + "-" + r.start.replace(":", ""); d.sh = d.sh.filter((x) => x.id !== id).concat({ ...r, id }); log((r.id ? "Koreksi" : "Tambah") + " sesi Shopee " + r.date + " " + r.start); }
     else if (aksi === "hapus-sh") { d.sh = d.sh.filter((x) => x.id !== b.id); log("Hapus sesi Shopee " + b.id); }
     else if (aksi === "simpan-ig") { const id = b.rec.id || "ig_" + Date.now().toString(36); d.ig = d.ig.filter((x) => x.id !== id).concat({ ...b.rec, id }); log((b.rec.id ? "Koreksi" : "Tambah") + " live IG " + b.rec.date); }
     else if (aksi === "hapus-ig") { d.ig = d.ig.filter((x) => x.id !== b.id); log("Hapus live IG " + b.id); }
@@ -56,7 +56,8 @@
   app.onAksi = (aksi, s) => {
     if (aksi === "ubah-sh") return formSh(s.sh);
     if (aksi === "tambah-sh") return formSh({ date: s.date });
-    if (aksi === "hapus-sh") return api("hapus-sh", { id: s.sh.id }).then(() => pesan("Sesi Shopee dihapus."), (e) => pesan(e.message, 1));
+    if (aksi === "tambah-tt") return formSh({ date: s.date, platform: "tiktok" });
+    if (aksi === "hapus-sh") return api("hapus-sh", { id: s.sh.id }).then(() => pesan("Sesi " + lmPl(s) + " dihapus."), (e) => pesan(e.message, 1));
     if (aksi === "ubah-ig") return formIg(s.ig);
     if (aksi === "tambah-ig") return formIg({ date: s.date });
     if (aksi === "hapus-ig") return api("hapus-ig", { id: s.ig.id }).then(() => pesan("Live IG dihapus."), (e) => pesan(e.message, 1));
@@ -89,7 +90,7 @@
     $("#set-jev-uji").hidden = !p.jevTerpasang;
     $("#set-jev-hapus-wrap").innerHTML = !p.jevTerpasang || !p.jevDariWeb ? "" : hapusJevKonfirm
       ? '<button class="danger" id="set-jev-hapus-ok">Ya, hapus kunci</button> <button id="set-jev-hapus-batal">Batal</button>' : '<button class="danger" id="set-jev-hapus">Hapus kunci</button>';
-    const inp = $("#set-shopee"); if (document.activeElement !== inp) inp.value = p.shopeeUrl || "";
+    const inp = $("#set-shopee"); if (document.activeElement !== inp) { inp.value = p.shopeeUrl || ""; $("#set-tujuan").value = TT_URL_RE.test(inp.value) ? "tiktok" : "shopee"; }
     renderLink();
   }
   /* ---------- link penghitung unik per sesi + riwayatnya ---------- */
@@ -103,14 +104,14 @@
       ? `<button class="danger" data-kode-hapus-ok="${esc(x.kode)}">Ya, hapus</button> <button data-kode-batal>Batal</button>`
       : `<button data-kode-ubah="${esc(x.kode)}">Ubah</button> ${x.aktif ? "" : `<button data-kode-aktif="${esc(x.kode)}">Jadikan aktif</button> `}<button class="danger" data-kode-hapus="${esc(x.kode)}">Hapus</button>`;
     const baris = r.slice((linkHal - 1) * per, linkHal * per).map((x) => ubahKode === x.kode
-      ? `<tr><td><code>${esc(x.kode)}</code></td><td colspan="5"><div class="row" style="flex-wrap:wrap;gap:6px"><input id="ku-url" value="${esc(x.url)}" style="flex:1 1 260px" aria-label="Link Shopee"><input id="ku-cat" value="${esc(x.catatan || "")}" placeholder="Catatan (mis. live 18 Okt malam)" style="flex:1 1 180px" aria-label="Catatan"></div></td><td><button class="primary" data-kode-simpan="${esc(x.kode)}">Simpan</button> <button data-kode-batal>Batal</button></td></tr>`
+      ? `<tr><td><code>${esc(x.kode)}</code></td><td colspan="5"><div class="row" style="flex-wrap:wrap;gap:6px"><input id="ku-url" value="${esc(x.url)}" style="flex:1 1 260px" aria-label="Link tujuan (Shopee atau TikTok)"><input id="ku-cat" value="${esc(x.catatan || "")}" placeholder="Catatan (mis. live 18 Okt malam)" style="flex:1 1 180px" aria-label="Catatan"></div></td><td><button class="primary" data-kode-simpan="${esc(x.kode)}">Simpan</button> <button data-kode-batal>Batal</button></td></tr>`
       : `<tr><td><code>${esc(x.kode)}</code>${x.aktif ? ' <span class="pill g">aktif</span>' : ""}${x.catatan ? `<br><small class="msg">${esc(x.catatan)}</small>` : ""}</td><td style="max-width:260px;overflow-wrap:anywhere">${esc(x.kampanye || "—")}<br><small class="msg">${esc(x.url)}</small></td><td>${tgl(x.mulai)}</td><td>${x.selesai ? tgl(x.selesai) : "masih dipakai"}</td><td style="text-align:right">${x.klik}</td><td style="text-align:right">${x.klikLama || 0}</td><td style="white-space:nowrap">${aksi(x)}</td></tr>`).join("");
     el.innerHTML = (L.url
-      ? `<div class="lm-link-row" style="margin-top:8px"><b>Link untuk live IG sekarang:</b> <code>${esc(L.url)}</code> <button data-copy-link="${esc(L.url)}">Salin link</button> ${gantiKonfirm ? '<button class="danger" id="set-kode-ok">Ya, ganti kode</button> <button id="set-kode-batal">Batal</button>' : '<button id="set-kode">Ganti kode (link Shopee tetap)</button>'} <span class="msg" id="set-link-msg"></span></div>`
-      : `<p class="msg">Belum ada link penghitung aktif.${(app.data.pengaturan || {}).shopeeUrl ? ' <button id="set-kode-ok">Buat link penghitung</button>' : " Simpan Link tujuan Shopee di atas untuk membuat yang pertama."}</p>`)
-      + (r.length ? `<h3 style="margin-top:14px">Riwayat link penghitung</h3><div class="tablebox"><table><thead><tr><th>Kode</th><th>Kampanye / link Shopee</th><th>Mulai</th><th>Diganti</th><th>Klik saat aktif</th><th>Klik setelah diganti</th><th>Aksi</th></tr></thead><tbody>${baris}</tbody></table></div>`
+      ? `<div class="lm-link-row" style="margin-top:8px"><b>Link untuk live IG sekarang:</b> <code>${esc(L.url)}</code> <button data-copy-link="${esc(L.url)}">Salin link</button> ${gantiKonfirm ? '<button class="danger" id="set-kode-ok">Ya, ganti kode</button> <button id="set-kode-batal">Batal</button>' : '<button id="set-kode">Ganti kode (link tujuan tetap)</button>'} <span class="msg" id="set-link-msg"></span></div>`
+      : `<p class="msg">Belum ada link penghitung aktif.${(app.data.pengaturan || {}).shopeeUrl ? ' <button id="set-kode-ok">Buat link penghitung</button>' : " Simpan Link tujuan di atas untuk membuat yang pertama."}</p>`)
+      + (r.length ? `<h3 style="margin-top:14px">Riwayat link penghitung</h3><div class="tablebox"><table><thead><tr><th>Kode</th><th>Kampanye / link tujuan</th><th>Mulai</th><th>Diganti</th><th>Klik saat aktif</th><th>Klik setelah diganti</th><th>Aksi</th></tr></thead><tbody>${baris}</tbody></table></div>`
         + (n > 1 ? `<div class="pager">${Array.from({ length: n }, (_, i) => `<button data-link-hal="${i + 1}" ${i + 1 === linkHal ? 'class="on"' : ""}>${i + 1}</button>`).join("")}</div>` : "")
-        + '<p class="msg">Klik dihitung sekali per perangkat per 10 menit. "Klik setelah diganti" = orang yang membuka link lama; mereka tetap diteruskan ke link Shopee terbaru. Hapus = kode dan hitungan kliknya hilang permanen, link itu jadi "tidak ditemukan".</p>' : "");
+        + '<p class="msg">Klik dihitung sekali per perangkat per 10 menit. "Klik setelah diganti" = orang yang membuka link lama; mereka tetap diteruskan ke link tujuan terbaru. Hapus = kode dan hitungan kliknya hilang permanen, link itu jadi "tidak ditemukan".</p>' : "");
   }
   document.addEventListener("click", async (e) => {
     const t = e.target.closest("button"); if (!t || !$("#set-link").contains(t)) return;
@@ -125,7 +126,7 @@
     if (d.kodeSimpan) { const url = $("#ku-url").value.trim(), catatan = $("#ku-cat").value; ubahKode = null; await jalan("kode-ubah", { kode: d.kodeSimpan, url, catatan }, "Kode " + d.kodeSimpan + " diubah."); return; }
     if (d.kodeHapus) { hapusKode = d.kodeHapus; ubahKode = null; renderLink(); return; }
     if (d.kodeHapusOk) { hapusKode = null; await jalan("kode-hapus", { kode: d.kodeHapusOk }, "Kode " + d.kodeHapusOk + " dihapus."); return; }
-    if (d.kodeAktif) { await jalan("kode-aktifkan", { kode: d.kodeAktif }, "Kode " + d.kodeAktif + " aktif lagi. Link tujuan Shopee ikut diganti ke link milik kode itu."); return; }
+    if (d.kodeAktif) { await jalan("kode-aktifkan", { kode: d.kodeAktif }, "Kode " + d.kodeAktif + " aktif lagi. Link tujuan ikut diganti ke link milik kode itu."); return; }
   });
   document.addEventListener("lm:data", () => { if (!$("#adm-set").hidden) renderSet(); });
   $("#adm-set-btn").addEventListener("click", () => { const w = $("#adm-set"); w.hidden = !w.hidden; if (!w.hidden) { renderSet(); w.scrollIntoView({ behavior: "smooth", block: "start" }); } });
@@ -140,10 +141,19 @@
     const m = $("#set-jev-msg"); m.innerHTML = '<span class="spin"></span> Menguji…';
     try { await api("uji-jev"); m.textContent = "Kunci masih diterima TypeSafe."; } catch (e) { m.textContent = e.message; }
   });
+  // Tujuan link per sesi: toko Shopee atau live TikTok (default @browie_official).
+  const TT_URL_RE = /^https:\/\/(www\.|m\.|vt\.|vm\.)?tiktok\.com\/\S+$/, TT_LIVE = "https://www.tiktok.com/@browie_official/live";
+  $("#set-tujuan").addEventListener("change", () => {
+    const inp = $("#set-shopee"), tt = $("#set-tujuan").value === "tiktok";
+    inp.placeholder = tt ? TT_LIVE : "https://shopee.co.id/...";
+    if (tt && !TT_URL_RE.test(inp.value.trim())) inp.value = TT_LIVE;
+    if (!tt && TT_URL_RE.test(inp.value.trim())) inp.value = "";
+    $("#set-shopee-msg").textContent = tt ? "Cek akunnya benar, lalu Simpan. Link penghitung baru akan dibuat." : "Tempel link Shopee berlabel, lalu Simpan.";
+  });
   $("#set-shopee-simpan").addEventListener("click", async () => {
-    const u = $("#set-shopee").value.trim(), m = $("#set-shopee-msg");
-    if (!/^https:\/\/(s\.)?shopee\.co\.id\/\S*$|^https:\/\/shope\.ee\/\S+$/.test(u)) { m.textContent = "Link harus diawali https://shopee.co.id/ , https://s.shopee.co.id/ , atau https://shope.ee/"; return; }
-    try { await api("pengaturan", { shopeeUrl: u }); m.textContent = "Tersimpan. Kalau link Shopee berubah, link penghitung baru dibuat di bawah. Salin dan pasang di live IG."; await app.muat(); renderSet(); } catch (e) { m.textContent = e.message; }
+    const u = $("#set-shopee").value.trim(), m = $("#set-shopee-msg"), tt = $("#set-tujuan").value === "tiktok";
+    if (tt ? !TT_URL_RE.test(u) : !/^https:\/\/(s\.)?shopee\.co\.id\/\S*$|^https:\/\/shope\.ee\/\S+$/.test(u)) { m.textContent = tt ? "Link TikTok harus diawali https://www.tiktok.com/ (mis. " + TT_LIVE + ")" : "Link harus diawali https://shopee.co.id/ , https://s.shopee.co.id/ , atau https://shope.ee/"; return; }
+    try { await api("pengaturan", { shopeeUrl: u }); m.textContent = "Tersimpan. Kalau link tujuan berubah, link penghitung baru dibuat di bawah. Salin dan pasang di live IG."; await app.muat(); renderSet(); } catch (e) { m.textContent = e.message; }
   });
 
   /* ---------- riwayat ---------- */
@@ -155,6 +165,10 @@
   const SH_F = [["penonton", "Penonton"], ["ditonton", "Ditonton"], ["aktif", "Penonton aktif"], ["puncak", "Penonton terbanyak"], ["avg", "Rata-rata menonton (m:dd)", "dur"],
     ["klik", "Klik produk"], ["ctr", "Persentase klik (%)"], ["atc", "Tambah ke keranjang"], ["pesanan", "Pesanan"], ["pembeli", "Pembeli"], ["produk", "Produk terjual"],
     ["jual", "Penjualan (Rp)"], ["follow", "Pengikut baru"], ["suka", "Suka"], ["bagi", "Dibagikan"], ["komen", "Komentar"]];
+  // Sesi live TikTok (@browie_official): kunci sama dengan Shopee supaya laporan & pembanding tetap jalan, labelnya ikut TikTok LIVE.
+  const TT_F = [["penonton", "Penonton (Viewers)"], ["ditonton", "Total tayangan (Views)"], ["puncak", "Penonton tertinggi (Peak)"], ["avg", "Rata-rata durasi tonton (m:dd)", "dur"],
+    ["klik", "Klik produk"], ["ctr", "CTR produk (%)"], ["pesanan", "Pesanan (SKU orders)"], ["pembeli", "Pembeli"], ["produk", "Produk terjual (Items sold)"],
+    ["jual", "GMV (Rp)"], ["follow", "Pengikut baru"], ["suka", "Suka (Likes)"], ["bagi", "Dibagikan"], ["komen", "Komentar"]];
   const f = (id, l, val, type) => `<label>${l}<input id="${id}" type="${type || "text"}" ${type ? "" : 'inputmode="decimal"'} value="${esc(val == null ? "" : val)}"></label>`;
   function bukaForm(judul, html) {
     app.keAdmin();
@@ -162,15 +176,16 @@
     $("#adm-form-wrap").hidden = false; $("#adm-form-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
   }
   function formSh(s) {
-    s = s || {}; const src = s.sumber || {};
-    $("#adm-form").dataset.jenis = "sh"; $("#adm-form").dataset.id = s.id || "";
-    bukaForm(s.id ? "Ubah sesi Shopee " + tgl(s.date) + " " + (s.start || "") : "Sesi Shopee baru",
-      `<p class="msg">Salin dari Seller Centre → Live Streaming → sesi → <b>Tinjauan Data</b>, dan dari dashboard live (kotak oranye) untuk asal penonton. Koreksi di sini selalu menang atas data tarikan ekstensi.</p>
+    s = s || {}; const src = s.sumber || {}, tt = lmPlat(s) === "tiktok", F = tt ? TT_F : SH_F, P = tt ? "TikTok" : "Shopee";
+    $("#adm-form").dataset.jenis = "sh"; $("#adm-form").dataset.id = s.id || ""; $("#adm-form").dataset.platform = tt ? "tiktok" : "";
+    bukaForm(s.id ? "Ubah sesi " + P + " " + tgl(s.date) + " " + (s.start || "") : "Sesi " + P + " baru",
+      (tt ? `<p class="msg">Salin dari TikTok (@browie_official) → LIVE Center / ringkasan setelah live selesai. Kalau ada data penjualan, dari TikTok Shop Seller Center → Analitik → LIVE. Tidak perlu ekstensi. Lebih cepat: <b>📸 Impor screenshot</b>.</p>`
+        : `<p class="msg">Salin dari Seller Centre → Live Streaming → sesi → <b>Tinjauan Data</b>, dan dari dashboard live (kotak oranye) untuk asal penonton. Koreksi di sini selalu menang atas data tarikan ekstensi. Tidak perlu ekstensi.</p>`) + `
       <div class="fgrid-set">${f("f-date", "Tanggal", s.date || new Date().toISOString().slice(0, 10), "date")}${f("f-start", "Jam mulai", s.start || "", "time")}${f("f-dur", "Durasi (j:mm:dd)", durTxt(s.dur))}
       <label class="span2">Judul live<input id="f-title" type="text" value="${esc(s.title || "")}"></label></div>
-      <h3 class="fh">Tinjauan Data</h3><div class="fgrid-set">${SH_F.map(([k, l, t]) => f("f-" + k, l, t === "dur" ? durTxt(s[k]) : s[k])).join("")}</div>
-      <h3 class="fh">Sumber Menonton Livestream (%)</h3><div class="fgrid-set">${LM_SUMBER.map((k, i) => f("f-src-" + i, k, src[k])).join("")}</div>
-      <h3 class="fh">Produk terjual <small class="msg">Tinjauan Data → Penjualan → Lihat Rincian</small></h3>
+      <h3 class="fh">${tt ? "Angka live TikTok" : "Tinjauan Data"}</h3><div class="fgrid-set">${F.map(([k, l, t]) => f("f-" + k, l, t === "dur" ? durTxt(s[k]) : s[k])).join("")}</div>
+      ${tt ? "" : `<h3 class="fh">Sumber Menonton Livestream (%)</h3><div class="fgrid-set">${LM_SUMBER.map((k, i) => f("f-src-" + i, k, src[k])).join("")}</div>`}
+      <h3 class="fh">Produk terjual <small class="msg">${tt ? "boleh dikosongkan" : "Tinjauan Data → Penjualan → Lihat Rincian"}</small></h3>
       <div class="items-ed" id="f-items"><div class="it-row it-head"><span>Produk</span><span>Etalase</span><span>Terjual</span><span>Penjualan (Rp)</span><span></span></div>
         ${(s.items || []).map(itemRow).join("")}</div>
       <datalist id="dl-etalase">${daftarEtalase().map((e) => `<option value="${esc(e)}">`).join("")}</datalist>
@@ -209,8 +224,9 @@
     try {
       msg.textContent = "Menyimpan…";
       if (form.dataset.jenis === "sh") {
-        const rec = { id: form.dataset.id || undefined, date, start: v("f-start"), title: v("f-title").trim(), dur: parseDur(v("f-dur")) };
-        for (const [k, , t] of SH_F) { const x = t === "dur" ? parseDur(v("f-" + k)) : parseNum(v("f-" + k)); if (x != null) rec[k] = x; }
+        const tt = form.dataset.platform === "tiktok";
+        const rec = { id: form.dataset.id || undefined, date, start: v("f-start"), title: v("f-title").trim(), dur: parseDur(v("f-dur")), platform: tt ? "tiktok" : undefined };
+        for (const [k, , t] of tt ? TT_F : SH_F) { const x = t === "dur" ? parseDur(v("f-" + k)) : parseNum(v("f-" + k)); if (x != null) rec[k] = x; }
         const src = {}; LM_SUMBER.forEach((k, i) => { const x = parseNum(v("f-src-" + i)); if (x != null) src[k] = x; }); if (Object.keys(src).length) rec.sumber = src;
         rec.items = bacaItems();
         for (const k in rec) if (rec[k] == null) delete rec[k];
@@ -287,7 +303,7 @@
       if (it.state !== "ok") return;
       const g = (k) => document.getElementById("imp-" + i + "-" + k);
       if (!g("date")) return;
-      if (it.jenis === "shopee") { for (const [k, , t] of SH_KARTU) { const el = g(k); if (el) it.data[k] = t === "dur" ? parseDur(el.value) : (t === "date" || t === "time") ? el.value : parseNum(el.value); } return; }
+      if (toko(it.jenis)) { for (const [k, , t] of kartuF(it)) { const el = g(k); if (el) it.data[k] = t === "dur" ? parseDur(el.value) : (t === "date" || t === "time") ? el.value : parseNum(el.value); } return; }
       it.data.title = g("title").value; it.data.date = g("date").value;
       it.data.dur = parseDur(g("dur").value);
       for (const k of ["viewers", "puncak", "komen", "share", "engaged"]) it.data[k] = parseNum(g(k).value);
@@ -299,7 +315,7 @@
     $("#adm-imports").innerHTML = imports.map((it, i) => {
       if (it.state === "reading") return `<div class="imp"><img src="${it.url}" alt="Screenshot"><div class="msg"><span class="spin"></span> Membaca screenshot…${i === 0 ? " Pertama kali butuh beberapa detik untuk menyiapkan mesin baca." : ""}</div></div>`;
       if (it.state === "error") return `<div class="imp"><img src="${it.url}" alt="Screenshot"><div><div class="alert warn">${esc(it.err)}</div><button data-imp-drop="${i}">Buang</button></div></div>`;
-      if (it.jenis === "shopee") return kartuShopee(it, i);
+      if (toko(it.jenis)) return kartuShopee(it, i);
       const d = it.data, kurang = new Set(d.kurang || []);
       const inputs = FIELDS.map(([k, l, t]) => `<label class="${kurang.has(k) ? "miss" : ""}">${l}<input id="imp-${i}-${k}" type="${t === "date" ? "date" : "text"}" ${t ? "" : 'inputmode="numeric"'} value="${esc(t === "dur" ? durTxt(d[k]) : d[k] == null ? "" : d[k])}"></label>`).join("");
       const dup = (app.data.ig || []).find((x) => x.date === d.date && x.dur === d.dur && d.dur != null);
@@ -314,25 +330,29 @@
   const SH_KARTU = [["date", "Tanggal", "date"], ["start", "Jam mulai", "time"], ["dur", "Durasi (j:mm:dd)", "dur"], ["penonton", "Penonton"], ["aktif", "Penonton aktif"], ["ditonton", "Ditonton"],
     ["puncak", "Penonton terbanyak"], ["avg", "Rata-rata menonton (m:dd)", "dur"], ["klik", "Klik produk"], ["ctr", "Persentase klik (%)"], ["atc", "Tambah ke keranjang"],
     ["pesanan", "Pesanan"], ["pembeli", "Pembeli"], ["produk", "Produk terjual"], ["jual", "Penjualan (Rp)"], ["follow", "Pengikut baru"], ["suka", "Suka"], ["bagi", "Dibagikan"], ["komen", "Komentar"]];
+  // Screenshot ringkasan live TikTok: kolom sama dengan form + 3 kolom waktu.
+  const TT_KARTU = [["date", "Tanggal", "date"], ["start", "Jam mulai", "time"], ["dur", "Durasi (j:mm:dd)", "dur"], ...TT_F];
+  const toko = (j) => j === "shopee" || j === "tiktok";
+  const kartuF = (it) => (it.jenis === "tiktok" ? TT_KARTU : SH_KARTU);
   function kartuShopee(it, i) {
-    const d = it.data, kurang = new Set(d.kurang || []), ragu = new Set(d.ragu || []);
-    const inp = SH_KARTU.map(([k, l, t]) => `<label class="${kurang.has(k) || ragu.has(k) ? "miss" : ""}">${l}${ragu.has(k) ? " · cek" : ""}<input id="imp-${i}-${k}" type="${t === "date" ? "date" : t === "time" ? "time" : "text"}" ${t ? "" : 'inputmode="decimal"'} value="${esc(t === "dur" ? durTxt(d[k]) : d[k] == null ? "" : d[k])}"></label>`).join("");
-    const ada = (app.data.sh || []).find((s) => d.date && d.start && s.date === d.date && s.start === d.start);
-    const n = new Set([...kurang, ...ragu].filter((k) => SH_KARTU.some(([x]) => x === k))).size;
-    return `<div class="imp"><img src="${it.url}" alt="Screenshot"><div><div class="fields"><span class="jenis"><span class="pill sh">🛒 Shopee · Tinjauan Data</span></span>${inp}</div>
-      <p class="note">Asal penonton (Beranda, Lainnya, dll.) dan rincian produk tidak terbaca dari screenshot ini — isi lewat ✏️ Ubah Shopee setelah disimpan.</p>
-      <div class="row"><button class="primary" data-imp-save="${i}">${ada ? "Perbarui sesi " + esc(d.start) : "Simpan sesi Shopee"}</button><button data-imp-drop="${i}">Buang</button>
+    const d = it.data, kurang = new Set(d.kurang || []), ragu = new Set(d.ragu || []), tt = it.jenis === "tiktok", K = kartuF(it), P = tt ? "TikTok" : "Shopee";
+    const inp = K.map(([k, l, t]) => `<label class="${kurang.has(k) || ragu.has(k) ? "miss" : ""}">${l}${ragu.has(k) ? " · cek" : ""}<input id="imp-${i}-${k}" type="${t === "date" ? "date" : t === "time" ? "time" : "text"}" ${t ? "" : 'inputmode="decimal"'} value="${esc(t === "dur" ? durTxt(d[k]) : d[k] == null ? "" : d[k])}"></label>`).join("");
+    const ada = (app.data.sh || []).find((s) => d.date && d.start && s.date === d.date && s.start === d.start && lmPlat(s) === (tt ? "tiktok" : "shopee"));
+    const n = new Set([...kurang, ...ragu].filter((k) => K.some(([x]) => x === k))).size;
+    return `<div class="imp"><img src="${it.url}" alt="Screenshot"><div><div class="fields"><span class="jenis"><span class="pill sh">${tt ? "🎵 TikTok · ringkasan LIVE" : "🛒 Shopee · Tinjauan Data"}</span></span>${inp}</div>
+      <p class="note">${tt ? "Jam mulai biasanya tidak tampil di ringkasan TikTok — isi manual (dipakai untuk menghitung klik link IG). Angka yang tidak terbaca boleh dikosongkan." : "Asal penonton (Beranda, Lainnya, dll.) dan rincian produk tidak terbaca dari screenshot ini — isi lewat ✏️ Ubah Shopee setelah disimpan."}</p>
+      <div class="row"><button class="primary" data-imp-save="${i}">${ada ? "Perbarui sesi " + esc(d.start) : "Simpan sesi " + P}</button><button data-imp-drop="${i}">Buang</button>
       <span class="msg" id="imp-${i}-msg">${n ? `<span class="pill w">${n} kolom perlu diisi/dicek</span> kolom kuning.` : '<span class="pill g">Semua kolom terbaca</span> cek sekilas lalu simpan.'}${ada ? ' <span class="pill w">Sesi tanggal & jam ini sudah ada — angka akan memperbarui</span>' : ""}</span></div></div></div>`;
   }
   async function saveShopee(i) {
     const it = imports[i], g = (k) => { const el = document.getElementById("imp-" + i + "-" + k); return el ? el.value : ""; }, msg = document.getElementById("imp-" + i + "-msg");
-    const rec = { date: g("date"), start: g("start") };
-    if (!rec.date || !rec.start) { msg.innerHTML = '<span class="pill w">Tanggal dan jam mulai wajib diisi (lihat "Waktu Mulai" di atas Tinjauan Data).</span>'; return; }
-    for (const [k, , t] of SH_KARTU) { if (k === "date" || k === "start") continue; const x = t === "dur" ? parseDur(g(k)) : parseNum(g(k)); if (x != null) rec[k] = x; }
-    const ada = (app.data.sh || []).find((s) => s.date === rec.date && s.start === rec.start);
+    const tt = it.jenis === "tiktok", rec = { date: g("date"), start: g("start") }; if (tt) rec.platform = "tiktok";
+    if (!rec.date || !rec.start) { msg.innerHTML = `<span class="pill w">Tanggal dan jam mulai wajib diisi${tt ? " (jam live TikTok dimulai)" : ' (lihat "Waktu Mulai" di atas Tinjauan Data)'}.</span>`; return; }
+    for (const [k, , t] of kartuF(it)) { if (k === "date" || k === "start") continue; const x = t === "dur" ? parseDur(g(k)) : parseNum(g(k)); if (x != null) rec[k] = x; }
+    const ada = (app.data.sh || []).find((s) => s.date === rec.date && s.start === rec.start && lmPlat(s) === (tt ? "tiktok" : "shopee"));
     if (ada) { rec.id = ada.id; for (const k of ["title", "sumber", "items"]) if (ada[k] != null) rec[k] = ada[k]; }
     msg.textContent = "Menyimpan…";
-    try { const r = await api("simpan-sh", { rec }); URL.revokeObjectURL(it.url); imports.splice(i, 1); renderImports(); pesan("Sesi Shopee tersimpan."); if (r && r.id) app.dash.pilih(r.id); }
+    try { const r = await api("simpan-sh", { rec }); URL.revokeObjectURL(it.url); imports.splice(i, 1); renderImports(); pesan("Sesi " + (tt ? "TikTok" : "Shopee") + " tersimpan."); if (r && r.id) app.dash.pilih(r.id); }
     catch (e) { msg.innerHTML = `<span class="pill w">${esc(e.message)}</span>`; }
   }
   async function handleFiles(files) {
@@ -346,7 +366,7 @@
       const it = imports[i];
       try {
         const r = await bacaGambar(it.file);
-        if (!r.jenis) { it.state = "error"; it.err = "Jenis screenshot tidak dikenali. Yang bisa dibaca: Insights live Instagram, atau Tinjauan Data sesi live Shopee (Seller Centre)."; }
+        if (!r.jenis) { it.state = "error"; it.err = "Jenis screenshot tidak dikenali. Yang bisa dibaca: Insights live Instagram, Tinjauan Data sesi live Shopee (Seller Centre), atau ringkasan LIVE TikTok. Kalau tetap gagal, isi lewat + Sesi TikTok / + Sesi Shopee."; }
         else { it.jenis = r.jenis; it.data = r.data; it.state = "ok"; if (r.jenis === "ig" && r.data.kurang.length === 7) { it.state = "error"; it.err = "Tidak ada angka Insights yang terbaca. Pastikan ini screenshot halaman Insights live Instagram."; } }
       }
       catch (e) { it.state = "error"; it.err = "Mesin baca gagal jalan: " + String((e && e.message) || e).slice(0, 160); }
@@ -376,13 +396,14 @@
   file.addEventListener("change", () => { handleFiles(file.files); file.value = ""; });
   document.addEventListener("paste", (e) => { if ($("#admin").hidden) return; const fs = Array.from(e.clipboardData ? e.clipboardData.files : []); if (fs.length) { drop.hidden = false; handleFiles(fs); } });
   $("#adm-sh").addEventListener("click", () => formSh(null));
+  $("#adm-tt").addEventListener("click", () => formSh({ platform: "tiktok" }));
   $("#adm-log-btn").addEventListener("click", () => { const w = $("#adm-log-wrap"); w.hidden = !w.hidden; });
   $("#adm-petunjuk-btn").addEventListener("click", () => { const w = $("#adm-petunjuk"); w.hidden = !w.hidden; if (!w.hidden) w.scrollIntoView({ behavior: "smooth", block: "start" }); });
   $("#adm-awal").addEventListener("click", () => api("data-awal").then(() => pesan("Data awal 6–7 Okt dimuat."), (e) => pesan(e.message, 1)));
   $("#adm-form").addEventListener("submit", simpanForm);
   document.addEventListener("change", (e) => {
     const m = e.target.id && e.target.id.match(/^imp-(\d+)-date$/);
-    if (m && imports[+m[1]] && imports[+m[1]].data && imports[+m[1]].jenis !== "shopee") {
+    if (m && imports[+m[1]] && imports[+m[1]].data && !toko(imports[+m[1]].jenis)) {
       const i = +m[1], d = { ...imports[i].data, date: e.target.value, dur: parseDur(document.getElementById("imp-" + i + "-dur").value) };
       document.getElementById("imp-" + i + "-pairwrap").innerHTML = pairPilihan(i, d);
     }
@@ -407,7 +428,7 @@
       api("hapus-banyak", body).then(() => pesan(`${ids.length} data dihapus.`), (e) => pesan(e.message, 1)); return;
     }
     const ku = t.closest("[data-kl-ubah]"); if (ku) { const id = ku.dataset.klUbah; if (kl.jenis === "sh") formSh((app.data.sh || []).find((x) => x.id === id)); else formIg((app.data.ig || []).find((x) => x.id === id)); return; }
-    const sv = t.closest("[data-imp-save]"); if (sv) { const i = +sv.dataset.impSave; (imports[i] && imports[i].jenis === "shopee" ? saveShopee : saveImport)(i); return; }
+    const sv = t.closest("[data-imp-save]"); if (sv) { const i = +sv.dataset.impSave; (imports[i] && toko(imports[i].jenis) ? saveShopee : saveImport)(i); return; }
     const dr = t.closest("[data-imp-drop]"); if (dr) { const i = +dr.dataset.impDrop; URL.revokeObjectURL(imports[i].url); imports.splice(i, 1); renderImports(); }
   });
 })();

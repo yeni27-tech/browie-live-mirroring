@@ -9,7 +9,7 @@ function mkRes() {
   r.setHeader = (k, v) => { r.headers[k.toLowerCase()] = v; };
   r.status = (c) => { r.statusCode = c; return r; };
   r.json = (b) => { r.body = b; return r; };
-  r.end = () => r;
+  r.end = (b) => { if (b != null) r.body = b; return r; };
   return r;
 }
 function mkReq(method, { headers = {}, body } = {}) {
@@ -362,5 +362,29 @@ await tes("push data MENTAH: pratinjau dipetakan server tanpa disimpan, kirim be
   const resep = (await import("../api/resep.js")).default;
   r = mkRes(); resep(mkReq("GET", {}), r); assert.equal(r.statusCode, 401);
   r = mkRes(); resep(mkReq("GET", { headers: EXT }), r); assert.ok(r.body.sesi.path.startsWith("/api/"));
+});
+await tes("sesi TikTok: disimpan terpisah dari Shopee (id t-…, platform tiktok), jam sama tidak bentrok, IG ikut dipasangkan", async () => {
+  let r = await aksi({ aksi: "simpan-sh", rec: { date: "2026-10-25", start: "19:00", platform: "tiktok", penonton: 900, jual: 450000, dur: 3600 } });
+  assert.equal(r.statusCode, 200); assert.equal(r.body.id, "t-2026-10-25-1900");
+  r = await aksi({ aksi: "simpan-sh", rec: { date: "2026-10-25", start: "19:00", penonton: 300, dur: 3500 } }); assert.equal(r.body.id, "s-2026-10-25-1900");
+  const d = (await lihatData(ck("admin"))).body, t = d.sh.find((x) => x.id === "t-2026-10-25-1900");
+  assert.equal(t.platform, "tiktok"); assert.equal(core.lmPl({ sh: t, ig: null }), "TikTok"); assert.equal(core.lmPl({ sh: d.sh.find((x) => x.id === "s-2026-10-25-1900"), ig: null }), "Shopee");
+  const g = core.lmGabung([t], [{ id: "ig1", date: "2026-10-25", dur: 3550 }]); assert.equal(g[0].ig.id, "ig1");
+  assert.ok(d.log.some((l) => /sesi TikTok/.test(l.teks)));
+});
+await tes("tujuan link live TikTok: diterima, kode baru, klik membuka aplikasi TikTok (Android intent, tanpa tombol)", async () => {
+  const l = (await import("../../link/api/l.js")).default, tt = "https://www.tiktok.com/@browie_official/live";
+  assert.equal((await aksi({ aksi: "pengaturan", shopeeUrl: "https://tiktok.penipu.com/x" })).statusCode, 400);
+  const k0 = (await lihatData(ck("admin"))).body.link.aktif;
+  assert.equal((await aksi({ aksi: "pengaturan", shopeeUrl: tt })).statusCode, 200);
+  const d = (await lihatData(ck("admin"))).body; assert.notEqual(d.link.aktif, k0); assert.equal(d.link.riwayat.find((x) => x.aktif).kampanye, "TikTok LIVE @browie_official");
+  const res = mkRes(), req = mkReq("GET", { headers: { "user-agent": "Mozilla/5.0 (Linux; Android 14) Instagram" } }); req.query = { kode: d.link.aktif };
+  await l(req, res); assert.equal(res.statusCode, 200);
+  const html = String(res.body || res._end || "");
+  assert.ok(html.includes("intent://www.tiktok.com/@browie_official/live#Intent;scheme=https")); assert.ok(html.includes('location.replace(u)'));
+  // kode lama (Shopee) sekarang diteruskan ke tujuan terbaru = TikTok
+  const r2 = mkRes(), q2 = mkReq("GET", { headers: { "user-agent": "x" } }); q2.query = { kode: k0 }; await l(q2, r2); assert.equal(r2.statusCode, 200);
+  // balik ke Shopee supaya tes lain tidak terpengaruh
+  assert.equal((await aksi({ aksi: "pengaturan", shopeeUrl: "https://shopee.co.id/browieofficial" })).statusCode, 200);
 });
 console.log("\n" + n + " tes lolos");

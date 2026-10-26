@@ -120,7 +120,7 @@ tes("pengingat data belum lengkap: hanya sesi 7 hari terakhir; lengkap → koson
   assert.deepEqual(r.map((x) => [x.id, x.kurang.join(", ")]), [
     ["s1601", "data Instagram, follow baru, produk terjual"], // asal penonton sudah diisi
     ["s1023", "asal penonton, produk terjual"],
-    ["ig:i6", "data Shopee"],
+    ["ig:i6", "data Shopee/TikTok"],
   ]);
   assert.equal(C.lmBelumLengkap(g, "2026-10-20").length, 0); // sudah lewat 7 hari
   assert.deepEqual(C.lmBelumLengkap([{ id: "a", date: "2026-10-07", start: "10:00", sh: { follow: 1, pesanan: 0, sumber: { Lainnya: 10 } }, ig: { viewers: 5 } }], "2026-10-08"), []);

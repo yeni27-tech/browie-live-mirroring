@@ -1,5 +1,5 @@
 // Aksi admin (cookie peran admin). POST { aksi, … }:
-//   simpan-sh { rec }        — tambah/koreksi sesi Shopee (masuk bagian "edit", menang atas tarikan otomatis)
+//   simpan-sh { rec }        — tambah/koreksi sesi Shopee atau TikTok (rec.platform "tiktok", id diawali t-) (masuk bagian "edit", menang atas tarikan otomatis)
 //   hapus-sh  { id }         — sesi dari ekstensi disembunyikan (supaya tidak muncul lagi saat tarikan berikutnya); sesi manual dihapus
 //   simpan-ig { rec }        — tambah/koreksi live Instagram
 //   hapus-ig  { id }
@@ -12,7 +12,7 @@
 //   pengaturan { jevKey?, hapusJev?, shopeeUrl? } — dari tab Pengaturan admin (kunci JEV diuji dulu sebelum disimpan)
 //   uji-jev {}               — cek kunci JEV yang tersimpan masih diterima TypeSafe
 //   data-awal {}             — isi angka asli 6–7 Okt 2026 (hanya kalau penyimpanan masih kosong)
-import { cmdsKodeBaru, KODE_RE, kampanyeDari } from "./_kode.js";
+import { cmdsKodeBaru, KODE_RE, kampanyeDari, TUJUAN_RE, TUJUAN_PESAN } from "./_kode.js";
 import { peranCookie, readBody } from "./_auth.js";
 import { redis } from "./_redis.js";
 import { bacaSh, catatLog, bacaPengaturan } from "./_store.js";
@@ -29,6 +29,7 @@ const tgl = (d) => { const p = d.split("-"); return +p[2] + "/" + +p[1]; };
 
 function bersihSh(r) {
   const o = { date: r.date, start: /^\d{1,2}:\d{2}$/.test(r.start || "") ? r.start : "", title: teks(r.title, 160) || "" };
+  if (r.platform === "tiktok") o.platform = "tiktok";
   for (const k of ANGKA_SH) { const v = num(r[k]); if (v !== undefined) o[k] = v; }
   if (r.sumber && typeof r.sumber === "object") { const s = {}; for (const k of SUMBER) { const v = num(r.sumber[k]); if (v !== undefined && v <= 100) s[k] = v; } if (Object.keys(s).length) o.sumber = s; }
   // Rincian produk terjual: maks 60 baris, nama wajib.
@@ -68,14 +69,15 @@ export default async function handler(req, res) {
         const r = b.rec || {};
         if (!TGL_OK.test(r.date || "")) return res.status(400).json({ error: "Tanggal wajib diisi." });
         if (!/^\d{1,2}:\d{2}$/.test(r.start || "")) return res.status(400).json({ error: "Jam mulai wajib diisi (dipakai untuk menghitung klik link IG)." });
-        const id = ID_OK.test(r.id || "") ? r.id : "s-" + r.date + "-" + r.start.replace(":", "");
+        const tt = r.platform === "tiktok", P = tt ? "TikTok" : "Shopee";
+        const id = ID_OK.test(r.id || "") ? r.id : (tt ? "t-" : "s-") + r.date + "-" + r.start.replace(":", "");
         const lama = (await bacaSh([id]))[id];
         if (!r.id && lama && !lama.hidden) return res.status(409).json({ error: "Sesi dengan tanggal dan jam mulai ini sudah ada. Buka sesinya lalu tekan Ubah." });
         // Simpan sebagai koreksi HANYA kolom yang beda dari tarikan ekstensi; kolom yang sama tetap ikut diperbarui otomatis.
         const edit = bersihSh(r);
         if (lama && lama.base) for (const k of Object.keys(edit)) if (JSON.stringify(edit[k]) === JSON.stringify(lama.base[k])) delete edit[k];
         const rec = { ...(lama || {}), id, edit, hidden: false, updatedAt: now };
-        await redis([["HSET", "lm:sh", id, JSON.stringify(rec)], ...catatLog(`${lama ? "Koreksi" : "Tambah"} sesi Shopee ${tgl(r.date)} ${r.start}`)]);
+        await redis([["HSET", "lm:sh", id, JSON.stringify(rec)], ...catatLog(`${lama ? "Koreksi" : "Tambah"} sesi ${P} ${tgl(r.date)} ${r.start}`)]);
         return res.json({ ok: true, id });
       }
       case "hapus-sh": {
@@ -167,7 +169,7 @@ export default async function handler(req, res) {
         }
         if (typeof b.shopeeUrl === "string") {
           const u = b.shopeeUrl.trim();
-          if (!/^https:\/\/(s\.)?shopee\.co\.id\/\S*$|^https:\/\/shope\.ee\/\S+$/.test(u) || u.length > 500) return res.status(400).json({ error: "Link Shopee harus diawali https://shopee.co.id/ , https://s.shopee.co.id/ , atau https://shope.ee/" });
+          if (!TUJUAN_RE.test(u) || u.length > 500) return res.status(400).json({ error: TUJUAN_PESAN });
           const [lamaUrl, aktif] = (await redis([["HGET", "lm:set", "shopeeUrl"], ["HGET", "lm:set", "kodeAktif"]]));
           cmds.push(["HSET", "lm:set", "shopeeUrl", u]); catatan.push("ganti link tujuan Shopee");
           // Link Shopee berganti (atau belum ada kode sama sekali) → kode link penghitung baru; kode lama ditutup & masuk riwayat.
@@ -197,7 +199,7 @@ export default async function handler(req, res) {
         const o = JSON.parse(raw), cmds = [];
         if (typeof b.url === "string" && b.url.trim() !== o.url) {
           const u = b.url.trim();
-          if (!/^https:\/\/(s\.)?shopee\.co\.id\/\S*$|^https:\/\/shope\.ee\/\S+$/.test(u) || u.length > 500) return res.status(400).json({ error: "Link Shopee harus diawali https://shopee.co.id/ , https://s.shopee.co.id/ , atau https://shope.ee/" });
+          if (!TUJUAN_RE.test(u) || u.length > 500) return res.status(400).json({ error: TUJUAN_PESAN });
           o.url = u; o.kampanye = kampanyeDari(u);
           if (aktif === b.kode) cmds.push(["HSET", "lm:set", "shopeeUrl", u]);
         }

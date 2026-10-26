@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
 // ocr-ig.js skrip biasa untuk browser; di paket "type: module" dimuat lewat Function.
-const { parseIgText, parseShopeeText, jenisScreenshot } = (() => { const m = { exports: {} }; new Function("module", "chrome", "location", fs.readFileSync(new URL("../ocr.js", import.meta.url), "utf8"))(m); return m.exports; })();
+const { parseIgText, parseShopeeText, parseTiktokText, jenisScreenshot } = (() => { const m = { exports: {} }; new Function("module", "chrome", "location", fs.readFileSync(new URL("../ocr.js", import.meta.url), "utf8"))(m); return m.exports; })();
 const fx = (n) => fs.readFileSync(new URL("fixtures/" + n, import.meta.url), "utf8");
 const now = new Date("2026-10-08T12:00:00+07:00");
 let lolos = 0;
@@ -68,4 +68,20 @@ tes("jenis screenshot dikenali otomatis", () => {
   assert.equal(jenisScreenshot(fx("shopee-tinjauan-7okt.txt")), "shopee");
   assert.equal(jenisScreenshot("foto liburan"), null);
 });
+tes("ringkasan LIVE TikTok (teks contoh, label Inggris) terbaca", () => {
+  const t = "LIVE summary\nDuration 1:32:10\n2026-10-25\nViewers\n1,234\nViews 3.4K\nPeak viewers 87\nAvg. watch time 1m 12s\nNew followers 25\nLikes 5.6K\nComments 310\nShares 12\nGMV Rp1.250.000\nItems sold 14\nProduct clicks 220";
+  assert.equal(jenisScreenshot(t), "tiktok");
+  const r = parseTiktokText(t);
+  assert.equal(r.date, "2026-10-25"); assert.equal(r.dur, 5530);
+  assert.deepEqual([r.penonton, r.ditonton, r.puncak, r.avg, r.follow, r.suka, r.komen, r.bagi, r.jual, r.produk, r.klik], [1234, 3400, 87, 72, 25, 5600, 310, 12, 1250000, 14, 220]);
+  assert.ok(r.kurang.includes("start"));
+});
+tes("ringkasan TikTok label Indonesia", () => {
+  const r = parseTiktokText("Penonton 980\nPenonton tertinggi 64\nPengikut baru 11\nKomentar 120\nDibagikan 3\nPesanan 7");
+  assert.deepEqual([r.penonton, r.puncak, r.follow, r.komen, r.bagi, r.pesanan], [980, 64, 11, 120, 3, 7]);
+});
+tes("screenshot Shopee & IG tidak dikira TikTok", () => {
+  assert.equal(jenisScreenshot(fx("ig-insights-7okt.txt")), "ig");
+});
+
 console.log("\n" + lolos + " tes lolos");
