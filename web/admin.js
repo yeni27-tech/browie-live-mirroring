@@ -18,7 +18,7 @@
   /* ---------- kirim aksi ---------- */
   async function api(aksi, payload) {
     if (app.pratinjau) return simulasi(aksi, payload || {});
-    const res = await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aksi, ...(payload || {}) }) });
+    const res = await fetch("api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aksi, ...(payload || {}) }) });
     const j = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(j.error || "HTTP " + res.status);
     await app.muat();

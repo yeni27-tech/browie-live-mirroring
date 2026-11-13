@@ -46,7 +46,7 @@
   }
   app.muat = async function muat() {
     try {
-      const res = await fetch("/api/data", { cache: "no-store" });
+      const res = await fetch("api/data", { cache: "no-store" });
       if (res.ok) return tampil(await res.json());
       throw new Error("HTTP " + res.status);
     } catch (e) {
@@ -65,14 +65,14 @@
     const btn = $("login-btn"), msg = $("login-msg");
     btn.disabled = true; msg.textContent = "";
     try {
-      const res = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: $("login-pass").value }) });
+      const res = await fetch("api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: $("login-pass").value }) });
       if (!res.ok) { msg.textContent = (await res.json().catch(() => ({}))).error || "Gagal masuk"; return; }
       $("login-pass").value = ""; await app.muat();
     } catch (err) { msg.textContent = "Gagal masuk: " + err.message; } finally { btn.disabled = false; }
   });
   $("btn-login").onclick = () => { $("login-view").hidden = false; $("login-msg").textContent = ""; setTimeout(() => $("login-pass").focus(), 50); };
   $("login-batal").onclick = () => { $("login-view").hidden = true; };
-  $("btn-logout").onclick = async () => { await fetch("/api/logout"); location.reload(); };
+  $("btn-logout").onclick = async () => { await fetch("api/logout"); location.reload(); };
   // Segarkan tiap 5 menit selama tab terlihat (admin yang sedang mengisi form tidak diganggu).
   setInterval(() => { if (document.visibilityState === "visible" && !$("app").hidden && !document.querySelector("#adm-form-wrap:not([hidden]), .imp")) app.muat(); }, 5 * 60 * 1000);
   app.muat();
